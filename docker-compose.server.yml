@@ -1,0 +1,121 @@
+version: "3.9"
+
+# ============================================
+# SnapLearn 服务器部署（PostgreSQL 已在宿主机运行）
+# 配合 deploy-server.sh 使用：
+#   git pull → mvn package → docker compose build → up -d
+# ============================================
+
+services:
+  # ========== Spring Boot Backend ==========
+  backend:
+    build:
+      context: ./backend-java
+      dockerfile: Dockerfile
+    image: snaplearn-backend:latest
+    container_name: snaplearn-backend
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      UPLOAD_DIR: /app/uploads
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      ADMIN_JWT_EXPIRE_MINUTES: ${ADMIN_JWT_EXPIRE_MINUTES}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_MODEL: ${LLM_MODEL}
+      AI_BASE_URL: ${AI_BASE_URL}
+      AI_DASHSCOPE_BASE_URL: ${AI_DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com}
+      AI_DASHSCOPE_API_KEY: ${AI_DASHSCOPE_API_KEY}
+      BAIDU_OCR_API_KEY: ${BAIDU_OCR_API_KEY}
+      BAIDU_OCR_SECRET_KEY: ${BAIDU_OCR_SECRET_KEY}
+      WECHAT_APP_ID: ${WECHAT_APP_ID}
+      WECHAT_APP_SECRET: ${WECHAT_APP_SECRET}
+      DEBUG: ${DEBUG:-false}
+      APP_BASE_URL: ${APP_BASE_URL:-https://snaplearn.top}
+      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      LOGGING_FILE_PATH: /app/logs
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - uploads_data:/app/uploads
+      - logs_data:/app/logs
+    networks:
+      - snaplearn-network
+
+  # ========== Prometheus 指标采集 ==========
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: snaplearn-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - snaplearn-network
+
+  # ========== Grafana 可视化面板 ==========
+  grafana:
+    image: grafana/grafana:latest
+    container_name: snaplearn-grafana
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    ports:
+      - "${GRAFANA_PORT:-3100}:3000"
+    networks:
+      - snaplearn-network
+
+  # ========== Vue Admin SPA (Nginx) ==========
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    image: snaplearn-admin:latest
+    container_name: snaplearn-admin
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${ADMIN_PORT:-3001}:3001"
+      - "${ADMIN_SSL_PORT:-443}:443"
+    volumes:
+      - ssl_data:/etc/nginx/ssl:ro
+    networks:
+      - snaplearn-network
+
+volumes:
+  uploads_data:
+    driver: local
+  logs_data:
+    driver: local
+  ssl_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  snaplearn-network:
+    driver: bridge

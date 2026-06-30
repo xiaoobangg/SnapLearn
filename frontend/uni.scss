@@ -1,0 +1,84 @@
+﻿// ==========================================
+// SnapLearn Design System 鈥?鍦嗘鼎鍙埍椋?(Chiikawa)
+// ==========================================
+// 涓昏壊璋冿細鏆栫矇 + 钖拌。鑽夌传 + 濂舵补鐧?// 鍏抽敭璇嶏細鍦嗘鼎銆佹煍鍜屻€佸彲鐖便€佸皬鏈嬪弸鍙嬪ソ
+// ==========================================
+
+$primary: #FF8A9B;
+$primary-light: #FFB3C1;
+$primary-dark: #E86A7D;
+$secondary: #C084FC;
+$secondary-light: #D8B4FE;
+$success: #34D399;
+$warning: #FCD34D;
+$danger: #FB7185;
+$info: #60A5FA;
+$text-primary: #3D2E2E;
+$text-secondary: #8B7E7E;
+$text-muted: #B8ADAD;
+$text-placeholder: #C8BFBF;
+$text-inverse: #FFFFFF;
+$bg-primary: #FFF8F0;
+$bg-secondary: #FFF0E8;
+$bg-card: #FFFFFF;
+$bg-overlay: rgba(80, 50, 50, 0.35);
+$border-color: #FFE8E0;
+$border-light: #FFF0E8;
+$radius-xs: 12rpx;
+$radius-sm: 20rpx;
+$radius-md: 28rpx;
+$radius-lg: 36rpx;
+$radius-xl: 44rpx;
+$radius-pill: 50rpx;
+$radius-circle: 50%;
+$font-xs: 20rpx;
+$font-sm: 24rpx;
+$font-base: 28rpx;
+$font-lg: 32rpx;
+$font-xl: 38rpx;
+$font-xxl: 44rpx;
+$font-hero: 52rpx;
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+$font-weight-extrabold: 800;
+$spacing-xs: 8rpx;
+$spacing-sm: 12rpx;
+$spacing-base: 16rpx;
+$spacing-md: 20rpx;
+$spacing-lg: 24rpx;
+$spacing-xl: 32rpx;
+$spacing-xxl: 40rpx;
+$spacing-huge: 48rpx;
+$shadow-sm: 0 4rpx 12rpx rgba(255, 138, 155, 0.15);
+$shadow-md: 0 8rpx 24rpx rgba(255, 138, 155, 0.12);
+$shadow-lg: 0 12rpx 40rpx rgba(255, 138, 155, 0.1);
+$shadow-purple: 0 8rpx 24rpx rgba(192, 132, 252, 0.15);
+$shadow-green: 0 8rpx 24rpx rgba(52, 211, 153, 0.15);
+$shadow-yellow: 0 8rpx 24rpx rgba(252, 211, 77, 0.15);
+$gradient-primary: linear-gradient(135deg, #FF8A9B 0%, #FFB3C1 100%);
+$gradient-secondary: linear-gradient(135deg, #C084FC 0%, #D8B4FE 100%);
+$gradient-sunset: linear-gradient(135deg, #FF8A9B 0%, #C084FC 50%, #60A5FA 100%);
+$gradient-warm: linear-gradient(135deg, #FFD4A8 0%, #FFB3C1 100%);
+$gradient-mint: linear-gradient(135deg, #34D399 0%, #6EE7B7 100%);
+$gradient-bg: linear-gradient(180deg, #FFF8F0 0%, #FFE8E0 100%);
+$gradient-card: linear-gradient(135deg, #FFF0E8 0%, #FFF8F0 100%);
+$transition-fast: 0.15s ease;
+$transition-base: 0.25s ease;
+$transition-slow: 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+$uni-color-primary: $primary;
+$uni-color-success: $success;
+$uni-color-warning: $warning;
+$uni-color-error: $danger;
+$uni-text-color: $text-primary;
+$uni-text-color-inverse: $text-inverse;
+$uni-text-color-grey: $text-secondary;
+$uni-text-color-placeholder: $text-placeholder;
+$uni-text-color-disable: $text-muted;
+$uni-bg-color: $bg-card;
+$uni-bg-color-grey: $bg-primary;
+$uni-bg-color-hover: $bg-secondary;
+$uni-border-color: $border-color;
+
+

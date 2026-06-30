@@ -1,0 +1,295 @@
+// ==========================================
+// SnapLearn 全局基础样式
+// 设计变量在 uni.scss 中定义
+// ==========================================
+
+view, text, image, scroll-view, swiper, swiper-item, button, input, navigator {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+page {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+  font-size: 28rpx;
+  color: $text-primary;
+  background-color: $bg-primary;
+  background-image: $gradient-bg;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// ==========================================
+// 通用布局
+// ==========================================
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.safe-bottom {
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.cute-card {
+  background: $bg-card;
+  border-radius: $radius-md;
+  box-shadow: $shadow-sm;
+  border: 2rpx solid $border-light;
+  transition: $transition-base;
+
+  &:active {
+    transform: scale(0.97);
+    box-shadow: $shadow-md;
+  }
+}
+
+.cute-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20rpx 40rpx;
+  border-radius: $radius-pill;
+  font-size: $font-base;
+  font-weight: $font-weight-semibold;
+  border: none;
+  transition: $transition-fast;
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.cute-btn-primary {
+  @extend .cute-btn;
+  background: $gradient-primary;
+  color: $text-inverse;
+  box-shadow: $shadow-sm;
+}
+
+.cute-btn-secondary {
+  @extend .cute-btn;
+  background: $gradient-secondary;
+  color: $text-inverse;
+  box-shadow: $shadow-purple;
+}
+
+.cute-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6rpx 18rpx;
+  border-radius: $radius-pill;
+  font-size: $font-sm;
+  font-weight: $font-weight-semibold;
+}
+
+// ==========================================
+// 全局动画
+// ==========================================
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.8) translateY(20rpx); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8rpx); }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(430%); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+// ==========================================
+// 页面通用容器
+// ==========================================
+.page-wrap {
+  min-height: 100vh;
+  background: $gradient-bg;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-lg;
+
+  .section-title {
+    font-size: $font-xl;
+    font-weight: $font-weight-bold;
+    color: $text-primary;
+  }
+
+  .section-count {
+    font-size: $font-sm;
+    color: $text-secondary;
+    background: $bg-secondary;
+    padding: 6rpx 20rpx;
+    border-radius: $radius-pill;
+  }
+}
+
+// ==========================================
+// 弹窗/面板通用
+// ==========================================
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(80, 50, 50, 0.35);
+  backdrop-filter: blur(8rpx);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.sheet-panel {
+  background: $bg-card;
+  border-radius: $radius-xl $radius-xl 0 0;
+  width: 100%;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-xl $spacing-xl $spacing-md;
+  border-bottom: 2rpx solid $border-light;
+
+  .sheet-title {
+    font-size: $font-lg;
+    font-weight: $font-weight-bold;
+    color: $text-primary;
+  }
+
+  .sheet-close {
+    width: 56rpx;
+    height: 56rpx;
+    line-height: 56rpx;
+    text-align: center;
+    border-radius: 50%;
+    background: $bg-secondary;
+    font-size: 28rpx;
+    color: $text-muted;
+    flex-shrink: 0;
+  }
+}
+
+.sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: $spacing-base $spacing-xl $spacing-xl;
+}
+
+.sheet-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 0;
+  color: $text-muted;
+  font-size: $font-base;
+}
+
+// ==========================================
+// 空状态
+// ==========================================
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 160rpx;
+
+  .empty-icon {
+    font-size: 80rpx;
+    margin-bottom: $spacing-lg;
+    opacity: 0.5;
+  }
+
+  .empty-text {
+    font-size: $font-lg;
+    color: $text-secondary;
+    font-weight: $font-weight-semibold;
+    margin-bottom: $spacing-xs;
+  }
+
+  .empty-hint {
+    font-size: $font-base;
+    color: $text-muted;
+  }
+}
+
+// ==========================================
+// 进度条
+// ==========================================
+.progress-bar {
+  height: 16rpx;
+  background: $border-light;
+  border-radius: $radius-pill;
+  overflow: hidden;
+  display: flex;
+
+  .pb-segment {
+    height: 100%;
+    border-radius: $radius-pill;
+    background: $border-color;
+    transition: background $transition-base;
+
+    &.done {
+      background: $gradient-primary;
+    }
+
+    &.relearn {
+      background: $warning;
+    }
+
+    &.correct {
+      background: $gradient-mint;
+    }
+
+    &.wrong {
+      background: $danger;
+    }
+  }
+}

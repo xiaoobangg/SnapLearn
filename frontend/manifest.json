@@ -1,0 +1,61 @@
+{
+	"name": "拍立学",
+	"appid": "__UNI__231C32B",
+	"description": "拍照学习，一拍即学",
+	"versionName": "1.0.0",
+	"versionCode": "100",
+	// 标准 uni-app，非 uni-app x
+	/* 快应用特有相关 */
+	"quickapp": {},
+	/* 小程序特有相关 */
+	"mp-weixin": {
+		"appid": "wx6027d68bf445d70c",
+		"setting": {
+			"urlCheck": false
+		},
+		"usingComponents": true
+	},
+	"uniStatistics": {
+		"enable": false
+	},
+	"vueVersion": "3",
+	"app": {
+		"distribute": {
+			"modules": {},
+			"icons": {
+				"android": {
+					"hdpi": "",
+					"xhdpi": "",
+					"xxhdpi": "",
+					"xxxhdpi": ""
+				}
+			}
+		}
+	},
+	"app-android": {
+		"distribute": {
+			"modules": {},
+			"icons": {
+				"hdpi": "D:/project/SnapLearn/frontend/logo_max.png",
+				"xhdpi": "D:/project/SnapLearn/frontend/logo_max.png",
+				"xxhdpi": "D:/project/SnapLearn/frontend/logo_max.png",
+				"xxxhdpi": "D:/project/SnapLearn/frontend/logo_max.png"
+			},
+			"splashScreens": {
+				"default": {}
+			}
+		}
+	},
+	"app-ios": {
+		"distribute": {
+			"modules": {},
+			"icons": {},
+			"splashScreens": {}
+		}
+	},
+	"web": {
+		"router": {
+			"mode": "hash"
+		}
+	}
+}

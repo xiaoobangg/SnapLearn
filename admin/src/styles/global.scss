@@ -1,0 +1,638 @@
+@import "element-plus/theme-chalk/src/mixins/config.scss";
+
+$primary-color: #4F46E5;
+$primary-light: #EEF2FF;
+$primary-dark: #3730A3;
+
+$bg-gradient-start: #0F172A;
+$bg-gradient-end: #1E293B;
+$sidebar-bg: #0F172A;
+$sidebar-hover: rgba(79, 70, 229, 0.15);
+$sidebar-active: rgba(79, 70, 229, 0.25);
+
+$card-bg: rgba(30, 41, 59, 0.95);
+$card-border: rgba(255, 255, 255, 0.06);
+$card-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+$card-shadow-hover: 0 8px 32px rgba(79, 70, 229, 0.2);
+
+$text-primary: #F8FAFC;
+$text-secondary: #94A3B8;
+$text-muted: #64748B;
+
+$accent-blue: #06B6D4;
+$accent-green: #10B981;
+$accent-yellow: #F59E0B;
+$accent-purple: #8B5CF6;
+$accent-red: #EF4444;
+
+$radius-sm: 8px;
+$radius-md: 12px;
+$radius-lg: 16px;
+$radius-xl: 24px;
+
+$transition-fast: 0.15s ease;
+$transition-normal: 0.25s ease;
+$transition-slow: 0.35s ease;
+
+$font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+@mixin glass-effect {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@mixin gradient-text {
+  background: linear-gradient(135deg, $primary-color, $accent-blue);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@mixin glow-effect($color: $primary-color) {
+  box-shadow: 0 0 20px rgba($color, 0.3), 0 0 40px rgba($color, 0.1);
+}
+
+@mixin hover-lift {
+  transition: transform $transition-normal, box-shadow $transition-normal;
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: $card-shadow-hover;
+  }
+}
+
+:root {
+  --el-color-primary: #{$primary-color};
+  --el-color-primary-light-3: #{$primary-light};
+  --el-color-primary-light-5: rgba(79, 70, 229, 0.1);
+  --el-color-primary-dark-2: #{$primary-dark};
+  
+  --el-bg-color: #{$bg-gradient-start};
+  --el-bg-color-page: #{$bg-gradient-start};
+  --el-bg-color-overlay: rgba(0, 0, 0, 0.6);
+  
+  --el-text-color-primary: #FFFFFF;
+  --el-text-color-regular: #CBD5E1;
+  --el-text-color-secondary: #94A3B8;
+  
+  --el-border-color: #{$card-border};
+  --el-border-color-light: rgba(255, 255, 255, 0.04);
+  
+  --el-radius-sm: #{$radius-sm};
+  --el-radius-md: #{$radius-md};
+  --el-radius-lg: #{$radius-lg};
+  
+  --el-font-family: #{$font-family-sans};
+  
+  --el-card-bg-color: #{$card-bg};
+  --el-card-border-color: #{$card-border};
+  
+  --el-input-bg-color: rgba(15, 23, 42, 0.6);
+  --el-input-border-color: rgba(255, 255, 255, 0.1);
+  --el-input-text-color: #{$text-primary};
+  
+  --el-button-bg-color: #{$primary-color};
+  --el-button-hover-bg-color: #{$primary-dark};
+  
+  --el-table-bg-color: rgba(30, 41, 59, 0.4);
+  --el-table-row-hover-bg-color: rgba(79, 70, 229, 0.1);
+  
+  --el-dialog-bg-color: #{$card-bg};
+  --el-dialog-header-bg-color: rgba(15, 23, 42, 0.8);
+  
+  --el-menu-bg-color: #{$sidebar-bg};
+  --el-menu-active-bg-color: #{$sidebar-active};
+  --el-menu-hover-bg-color: #{$sidebar-hover};
+  --el-menu-text-color: #{$text-secondary};
+  --el-menu-active-text-color: #{$text-primary};
+  
+  --el-scrollbar-bg-color: rgba(255, 255, 255, 0.02);
+  --el-scrollbar-thumb-bg-color: rgba(255, 255, 255, 0.15);
+}
+
+html, body {
+  font-family: $font-family-sans;
+  background: linear-gradient(180deg, $bg-gradient-start 0%, $bg-gradient-end 100%);
+  min-height: 100vh;
+  color: $text-primary;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+}
+
+.el-card {
+  border-radius: $radius-lg;
+  border: 1px solid $card-border;
+  background: $card-bg;
+  box-shadow: $card-shadow;
+  
+  &:hover {
+    box-shadow: $card-shadow-hover;
+  }
+  
+  .el-card__header {
+    border-bottom: 1px solid $card-border;
+    padding: 16px 20px;
+    background: rgba(15, 23, 42, 0.8);
+    
+    .el-card__header-text {
+      font-weight: 600;
+      font-size: 15px;
+      color: $text-primary;
+    }
+  }
+  
+  .el-card__body {
+    padding: 20px;
+  }
+}
+
+.el-button {
+  border-radius: $radius-md;
+  font-weight: 500;
+  transition: all $transition-fast;
+  
+  &.el-button--small {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+  
+  &.el-button--primary {
+    background: linear-gradient(135deg, $primary-color, $primary-dark);
+    border: none;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+    
+    &:hover {
+      background: linear-gradient(135deg, $primary-dark, #312E81);
+      box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4);
+    }
+  }
+  
+  &.el-button--success {
+    background: linear-gradient(135deg, $accent-green, #059669);
+    border: none;
+  }
+  
+  &.el-button--warning {
+    background: linear-gradient(135deg, $accent-yellow, #D97706);
+    border: none;
+  }
+  
+  &.el-button--danger {
+    background: linear-gradient(135deg, $accent-red, #DC2626);
+    border: none;
+  }
+  
+  &.el-button--info {
+    background: linear-gradient(135deg, $accent-blue, #0891B2);
+    border: none;
+  }
+  
+  &.el-button--text {
+    color: #CBD5E1;
+    padding: 6px 12px;
+    font-size: 13px;
+    
+    &:hover {
+      color: #FFFFFF;
+      background: rgba(79, 70, 229, 0.15);
+      border-radius: 6px;
+    }
+  }
+
+  // 表格操作列 link 按钮调大 + 背景色
+  &.el-button--small.is-link {
+    padding: 6px 14px;
+    font-size: 13px;
+    min-height: 28px;
+    border-radius: 6px;
+    margin: 0 2px;
+    background: rgba(79, 70, 229, 0.12);
+    color: #C7D2FE;
+    border: 1px solid rgba(79, 70, 229, 0.2);
+
+    &:hover {
+      background: rgba(79, 70, 229, 0.25);
+      color: #FFFFFF;
+      border-color: rgba(79, 70, 229, 0.4);
+    }
+
+    &.el-button--primary.is-link {
+      background: rgba(79, 70, 229, 0.15);
+      color: #A5B4FC;
+      border-color: rgba(79, 70, 229, 0.25);
+
+      &:hover {
+        background: rgba(79, 70, 229, 0.3);
+        color: #FFFFFF;
+      }
+    }
+
+    &.el-button--warning.is-link {
+      background: rgba(245, 158, 11, 0.12);
+      color: #FCD34D;
+      border-color: rgba(245, 158, 11, 0.2);
+
+      &:hover {
+        background: rgba(245, 158, 11, 0.25);
+        color: #FFFFFF;
+      }
+    }
+
+    &.el-button--danger.is-link {
+      background: rgba(239, 68, 68, 0.12);
+      color: #FCA5A5;
+      border-color: rgba(239, 68, 68, 0.2);
+
+      &:hover {
+        background: rgba(239, 68, 68, 0.25);
+        color: #FFFFFF;
+      }
+    }
+
+    &.el-button--success.is-link {
+      background: rgba(16, 185, 129, 0.12);
+      color: #6EE7B7;
+      border-color: rgba(16, 185, 129, 0.2);
+
+      &:hover {
+        background: rgba(16, 185, 129, 0.25);
+        color: #FFFFFF;
+      }
+    }
+
+    &.el-button--info.is-link {
+      background: rgba(6, 182, 212, 0.12);
+      color: #67E8F9;
+      border-color: rgba(6, 182, 212, 0.2);
+
+      &:hover {
+        background: rgba(6, 182, 212, 0.25);
+        color: #FFFFFF;
+      }
+    }
+  }
+}
+
+// 表格操作列按钮间距
+.el-table .cell {
+  .el-button + .el-button {
+    margin-left: 6px;
+  }
+}
+
+.el-input__wrapper {
+  border-radius: $radius-md;
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+  
+  &:hover {
+    border-color: rgba(79, 70, 229, 0.3);
+  }
+  
+  &.is-focus {
+    border-color: $primary-color;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+  }
+  
+  .el-input__inner {
+    color: $text-primary;
+  }
+}
+
+.el-select .el-input__wrapper {
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.el-table {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  
+  .el-table__header-wrapper {
+    .el-table__header {
+      background: rgba(10, 15, 30, 0.98) !important;
+    }
+    
+    th {
+      background: rgba(10, 15, 30, 0.98) !important;
+      color: #CBD5E1 !important;
+      font-weight: 600;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 18px 16px;
+      letter-spacing: 0.5px;
+    }
+  }
+  
+  .el-table__body-wrapper {
+    .el-table__body {
+      tr {
+        background: rgba(15, 23, 42, 0.9) !important;
+        line-height: 1.8;
+        
+        &:hover > td {
+          background: rgba(79, 70, 229, 0.2) !important;
+        }
+        
+        td {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          color: #FFFFFF !important;
+          padding: 16px 16px;
+          font-size: 14px;
+          letter-spacing: 0.3px;
+          word-spacing: 1px;
+        }
+      }
+    }
+  }
+  
+  &.el-table--striped {
+    .el-table__body tr.el-table__row--striped {
+      background: rgba(10, 15, 30, 0.92) !important;
+    }
+    .el-table__body tr.el-table__row--striped td {
+      background: rgba(10, 15, 30, 0.92) !important;
+      color: #FFFFFF !important;
+    }
+  }
+  
+  .el-table__inner-wrapper {
+    border-radius: $radius-lg;
+    overflow: hidden;
+  }
+}
+
+.el-tag {
+  border-radius: $radius-sm;
+  font-weight: 500;
+  font-size: 12px;
+  
+  &.el-tag--success {
+    background: rgba(16, 185, 129, 0.15);
+    color: $accent-green;
+    border-color: rgba(16, 185, 129, 0.2);
+  }
+  
+  &.el-tag--info {
+    background: rgba(6, 182, 212, 0.15);
+    color: $accent-blue;
+    border-color: rgba(6, 182, 212, 0.2);
+  }
+  
+  &.el-tag--warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: $accent-yellow;
+    border-color: rgba(245, 158, 11, 0.2);
+  }
+  
+  &.el-tag--danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: $accent-red;
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+}
+
+.el-dialog {
+  border-radius: $radius-xl;
+  background: $card-bg;
+  border: 1px solid $card-border;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  
+  .el-dialog__header {
+    background: rgba(15, 23, 42, 0.8);
+    border-bottom: 1px solid $card-border;
+    
+    .el-dialog__title {
+      color: $text-primary;
+      font-weight: 600;
+    }
+  }
+  
+  .el-dialog__body {
+    color: $text-secondary;
+  }
+  
+  .el-dialog__footer {
+    border-top: 1px solid $card-border;
+  }
+}
+
+.el-form-item__label {
+  color: $text-secondary;
+}
+
+.el-pagination {
+  .btn-prev, .btn-next, .el-pager li {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid $card-border;
+    color: $text-secondary;
+    
+    &:hover {
+      background: rgba(79, 70, 229, 0.2);
+      color: $text-primary;
+    }
+    
+    &.active {
+      background: $primary-color;
+      border-color: $primary-color;
+      color: #fff;
+    }
+  }
+}
+
+.el-checkbox__input.is-checked .el-checkbox__inner {
+  background: $primary-color;
+  border-color: $primary-color;
+}
+
+.el-switch__core {
+  background: rgba(255, 255, 255, 0.1);
+  
+  &.is-active {
+    background: $primary-color;
+  }
+}
+
+.el-menu {
+  border-right: none;
+  
+  .el-menu-item {
+    margin: 4px 8px;
+    border-radius: $radius-md;
+    transition: all $transition-fast;
+    
+    &:hover {
+      background: $sidebar-hover;
+    }
+    
+    &.is-active {
+      background: $sidebar-active;
+      color: #fff;
+      
+      i {
+        color: $primary-color;
+      }
+    }
+  }
+}
+
+.page-wrap {
+  background: rgba(30, 41, 59, 0.95);
+  border-radius: $radius-lg;
+  padding: 24px;
+  border: 1px solid $card-border;
+  box-shadow: $card-shadow;
+  
+  &:hover {
+    box-shadow: $card-shadow-hover;
+  }
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: $text-primary;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    
+    &::before {
+      content: "";
+      width: 4px;
+      height: 20px;
+      background: linear-gradient(180deg, $primary-color, $accent-blue);
+      border-radius: 2px;
+    }
+  }
+}
+
+.page-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid $card-border;
+}
+
+.page-content {
+  margin-top: 16px;
+}
+
+.form-wrapper {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: $radius-md;
+  padding: 20px;
+  border: 1px solid $card-border;
+}
+
+.page-action {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  
+  .el-button {
+    border-radius: $radius-md;
+  }
+}
+
+.el-descriptions {
+  .el-descriptions__label {
+    color: $text-secondary;
+    font-weight: 500;
+  }
+  
+  .el-descriptions__content {
+    color: $text-primary;
+  }
+}
+
+.el-timeline {
+  .el-timeline-item__node {
+    background: rgba(79, 70, 229, 0.2);
+    border-color: $primary-color;
+    
+    &.is-dot {
+      background: $primary-color;
+    }
+  }
+  
+  .el-timeline-item__content {
+    color: $text-secondary;
+  }
+}
+
+.el-tree {
+  background: transparent;
+  
+  .el-tree-node__content {
+    color: $text-primary;
+    
+    &:hover {
+      background: rgba(79, 70, 229, 0.1);
+    }
+  }
+  
+  .el-tree-node.is-current > .el-tree-node__content {
+    background: rgba(79, 70, 229, 0.15);
+    color: $primary-color;
+  }
+}
+
+.el-date-editor {
+  .el-input__wrapper {
+    background: rgba(15, 23, 42, 0.6);
+  }
+}
+
+.el-popover {
+  background: $card-bg;
+  border: 1px solid $card-border;
+  
+  .el-popover__title {
+    color: $text-primary;
+  }
+  
+  .el-popover__content {
+    color: $text-secondary;
+  }
+}
+
+.el-loading-mask {
+  background: rgba(0, 0, 0, 0.5);
+  
+  .el-loading-spinner {
+    .el-loading-text {
+      color: $text-secondary;
+    }
+  }
+}

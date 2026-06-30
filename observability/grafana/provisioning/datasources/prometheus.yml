@@ -1,0 +1,10 @@
+apiVersion: 1
+
+datasources:
+  - name: snaplearn-prometheus
+    uid: snaplearn-prometheus           # 显式指定 UID，让仪表盘 panel 能稳定引用
+    type: prometheus
+    access: proxy
+    url: http://snaplearn-prometheus:9090
+    isDefault: true
+    editable: false

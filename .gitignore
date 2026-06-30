@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.venv/
+venv/
+# Project
+snaplearn.top.jpg
+CLAUDE.md
+AGENTS.md
+.env
+.env.server
+*.egg
+
+# Node
+node_modules/
+frontend/dist/
+frontend/unpackage/
+
+# IDE
+.idea/
+.agents/
+.claude/
+.vscode/
+*.swp
+*.swo
+skills-lock.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SQLite
+*.db
+
+# Uploads
+uploads/
+.uploads/
+
+# Docker
+docker-compose.override.yml
+
+# Java
+backend-java/target/
+**/application-dev.yml

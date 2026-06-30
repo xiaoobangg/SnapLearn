@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'snaplearn-backend'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      # 同 docker network 下直接走容器名 DNS，不依赖宿主机环境是否支持 host.docker.internal
+      - targets: ['snaplearn-backend:8080']
+        labels:
+          env: 'prod'
