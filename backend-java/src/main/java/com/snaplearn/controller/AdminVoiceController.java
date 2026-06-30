@@ -55,7 +55,7 @@ public class AdminVoiceController {
         return Map.of("ok", true);
     }
 
-    /** 官方音色库（cosyvoice-v3-flash），供 Admin 浏览勾选入库 */
+    /** 官方音色库（cosyvoice-v3-plus），供 Admin 浏览勾选入库 */
     @GetMapping("/catalog")
     public List<Map<String, String>> catalog() {
         return List.of(
@@ -218,7 +218,7 @@ public class AdminVoiceController {
     @PostMapping(value = "/enroll", consumes = "multipart/form-data")
     public Map<String, Object> enrollFile(@RequestParam("file") MultipartFile file,
                                            @RequestParam("name") String name,
-                                           @RequestParam(value = "model", defaultValue = "cosyvoice-v3-flash") String targetModel) {
+                                           @RequestParam(value = "model", defaultValue = "cosyvoice-v3-plus") String targetModel) {
         try {
             String voiceId = enrollmentService.enroll(file, name, targetModel);
             return saveVoice(name, voiceId, "声音复刻 · " + targetModel, targetModel);
@@ -233,7 +233,7 @@ public class AdminVoiceController {
         try {
             String audioUrl = body.get("url");
             String name = body.get("name");
-            String targetModel = body.getOrDefault("model", "cosyvoice-v3-flash");
+            String targetModel = body.getOrDefault("model", "cosyvoice-v3-plus");
             String voiceId = enrollmentService.enroll(audioUrl, name, targetModel);
             return saveVoice(name, voiceId, "声音复刻（URL）· " + targetModel, targetModel);
         } catch (Exception e) {
@@ -270,7 +270,7 @@ public class AdminVoiceController {
     public Map<String, Object> importEnrolled(@RequestBody Map<String, String> body) {
         try {
             String voiceId = body.get("voice_id");
-            String targetModel = body.getOrDefault("target_model", "cosyvoice-v3-flash");
+            String targetModel = body.getOrDefault("target_model", "cosyvoice-v3-plus");
             Voice v = new Voice();
             v.setName(body.getOrDefault("name", "复刻音色"));
             v.setProvider("dashscope");
@@ -301,7 +301,7 @@ public class AdminVoiceController {
         v.setName(name);
         v.setProvider("dashscope");
         v.setVoiceCode(voiceId);
-        v.setTtsModel(targetModel != null ? targetModel : "cosyvoice-v3-flash");
+        v.setTtsModel(targetModel != null ? targetModel : "cosyvoice-v3-plus");
         v.setDescription(desc);
         voiceService.create(v);
         return Map.of("ok", true, "voice_id", voiceId, "voice_code", voiceId);

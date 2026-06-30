@@ -1,4 +1,4 @@
-# SnapLearn（拍立学）业务需求文档（新版定稿）
+# SnapLearn（拍立学）业务需求文档
 ## 文档说明
 本文档为 **SnapLearn 拍立学最终版业务需求**，以**卡片组**为核心学习单元，完整覆盖分步学习、循环重学、多题型测试、全对通关等核心规则，可直接用于产品评审、前后端开发、测试用例编写。
 ---
@@ -67,7 +67,7 @@
 5. 当日打卡完成后，用户可勾选当日单词创建卡片组或加入已有卡片组
 6. 卡片组的单词学习完成后，可主动导入到打卡词库中长期复习
 
-### 场景六：AI 对话创建卡片组（v2.3 新增）
+### 场景六：AI 对话创建卡片组
 1. 用户进入 AI 对话页面，输入文本描述（如"帮我创建一篇关于气候变化的卡片组"）
 2. AI 智能体自动提取单词、查重（告知哪些已学过）、推荐相关词
 3. 用户确认最终词表和标题后，智能体自动创建卡片组
@@ -101,7 +101,7 @@
 | 知识点拆分 | 卡片内容按独立知识点拆分，支持分步展示 | P0 |
 | 生成进度反馈 | 生成过程中展示 loading 状态 | P1 |
 
-### 4. 卡片组学习模块（核心新版）
+### 4. 卡片组学习模块
 | 需求 | 说明 | 优先级 |
 |------|------|--------|
 | 按组学习 | 以卡片组为单元发起学习，不支持单卡零散学习 | P0 |
@@ -155,7 +155,7 @@
 | 卡片组导入打卡池 | 卡片组学习通关后，用户可主动将组内单词导入打卡词库，长期复习 | P0 |
 | 用户设置 | 每日新词量（默认10）、每日复习量（默认20）、打卡提醒开关、聊天偏好设置 | P0 |
 
-### 9. AI 对话模块（v2.1 + v2.2 + v2.3 增强）
+### 9. AI 对话模块
 
 | 需求 | 说明 | 优先级 |
 |------|------|--------|
@@ -176,7 +176,7 @@
 | **撤销创建** | **支持撤销最近创建的卡片组** | P1 |
 | Admin 端入口 | 管理后台亦提供 AI 对话页面，与小程序端方案一致 | P1 |
 
-### 10. RAG 知识库模块（v2.1 + v2.2 增强）
+### 10. RAG 知识库模块
 
 | 需求 | 说明 | 优先级 |
 |------|------|--------|
@@ -189,7 +189,7 @@
 | 文档管理 | Admin 端：列表、删除、查看块数 | P1 |
 | 召回排查 | `loggingRetriever` 自定义日志包装器，可观察召回数和相似度 | P1 |
 
-### 11. AI 对话审计日志（v2.2 新增）
+### 11. AI 对话审计日志
 
 | 需求 | 说明 | 优先级 |
 |------|------|--------|
@@ -202,7 +202,7 @@
 | Admin 详情查看 | 完整 prompt + response + token 拆分 + 复制 | P0 |
 | 列表预览截断 | 列表里 user_message / response_text 截断到 100 字，避免响应体爆炸 | P1 |
 
-### 12. 可观测性（v2.2 新增）
+### 12. 可观测性
 
 | 需求 | 说明 | 优先级 |
 |------|------|--------|
@@ -214,7 +214,7 @@
 | 自动数据源 | Grafana 启动时自动配 Prometheus 数据源 | P0 |
 | 模型筛选 | 仪表盘顶部模板变量，可单独看 deepseek / qwen-plus | P1 |
 
-### 13. TTS 语音合成模块（v2.2）
+### 13. TTS 语音合成模块
 
 | 需求 | 说明 | 优先级 |
 |------|------|--------|
@@ -225,7 +225,7 @@
 | 异步预生成 | 卡片组创建后异步批量生成音频 | P1 |
 | Coze 插件支持 | 提供 X-API-Key 认证的独立 TTS 接口 | P1 |
 
-### 14. API Key 管理模块（v2.3 新增）
+### 14. API Key 管理模块
 
 | 需求 | 说明 | 优先级 |
 |------|------|--------|
@@ -302,7 +302,7 @@
 | 微信小程序兼容 | 主要运行于微信小程序环境，兼容 H5 备用 |
 | OCR 响应时间 | 图片识别应在 3 秒内返回结果 |
 | LLM 生成时间 | 卡片生成应在 10 秒内完成（流式返回可优化体验） |
-| TTS 可靠性 | DashScope CosyVoice 为主要 TTS 引擎，支持系统音色 + 声音复刻；百度 TTS 为旧版降级链保留 |
+| TTS 可靠性 | DashScope CosyVoice 为主要 TTS 引擎，支持系统音色 + 声音复刻；百度 TTS 为降级链保留 |
 | 数据安全 | 用户数据隔离，JWT 认证，密码 BCrypt 加密，API Key 仅存储 hash |
 | 接口限流 | 对 LLM/OCR 等第三方 API 调用做频率控制 |
 | 测试性能 | 单组测试加载、判分响应时间≤2秒 |
@@ -395,16 +395,16 @@ voices                    ← 音色配置
 card_audios               ← 卡片音频缓存
   id, card_id, voice_id, audio_type, audio_url, created_at
 
-agent_memories            ← 长期记忆（v2.3）
+agent_memories            ← 长期记忆
   id, user_id, memory_key, memory_value, created_at, updated_at
 
-api_keys                  ← API Key（v2.3）
+api_keys                  ← API Key
   id, user_id, name, key_hash, key_prefix, is_active, last_used_at, created_at
 
-GraphThread               ← ReactAgent 会话线程（v2.3）
+GraphThread               ← ReactAgent 会话线程
   thread_id, thread_name, is_released
 
-GraphCheckpoint           ← ReactAgent 检查点（v2.3）
+GraphCheckpoint           ← ReactAgent 检查点
   checkpoint_id, parent_checkpoint_id, thread_id,
   node_id, next_node_id, state_data, state_content_type, saved_at
 ```
@@ -439,24 +439,39 @@ ReactAgent 智能体：
               卡片组创建成功
 ```
 
-### 与旧版 cards 表的差异
+### 数据流向
 
-| 旧版 | 新版 | 说明 |
-|------|------|------|
-| cards 包含 word+所有释义字段 | cards 仅存 group_id + word_id + status | 内容分离到 word_contents |
-| 无 word_contents 表 | 新增 word_contents，LLM 生成内容独立存储 | 打卡池复用 |
-| 无 knowledge_points | 新增知识点表，支持分步展示 | 逐知识点确认 |
-| 无 test_* 表 | 新增测试题目/答题/错题表 | 测试模块 |
-| 无 word_bank 表 | 新增词库相关表 | 打卡词库 |
-| notebook 存 SM-2 字段 | 拆分 user_daily_pool + daily_checkin_log | 打卡专用 |
-| 无 voices/card_audios | 新增音色和音频缓存表 | TTS 语音合成 |
-| 无 chat_traces | 新增对话审计日志表 | 可观测性 |
-| 无 agent_memories | 新增长期记忆表 | ReactAgent 个性化 |
-| 无 api_keys | 新增 API Key 表 | 外部集成 |
+```
+         ┌──────────────────────────────────
+         │          word_contents           │
+         │   (LLM 生成，唯一，可刷新)         │
+         └──────────┬───────────────────────┘
+                    │ word_id
+            ┌───────┴───────┐
+            ▼               ▼
+       ┌─────────┐    ┌──────────┐
+       │  cards  │    │ 打卡池    │
+       │(卡片组) │    │(每日复习) │
+       └─────────┘    └──────────┘
+            │               │
+            ▼               ▼
+       ┌─────────┐    ┌──────────┐
+       │ 测试模块 │    │ 打卡记录  │
+       └─────────┘    └──────────┘
+            │
+            ├──卡片组通关──→ 用户主动导入 → 打卡池
+            │
+            └──打卡勾选单词 → 创建/加入卡片组
+
+ReactAgent 智能体：
+  用户消息 → extractWords → checkExistingWords → recommendRelatedWords → createCardGroup
+                   ↓
+              卡片组创建成功
+```
 
 ---
 
-## 九、AI 聊天模块（v2.1 + v2.2 + v2.3 增强）
+## 九、AI 聊天模块
 
 ### 模块概述
 
@@ -480,7 +495,7 @@ ReactAgent 智能体：
 | **长期记忆** | **保存/读取用户个性化信息，跨会话保留** | P1 |
 | Admin 端入口 | 管理后台亦提供 AI 对话页面，与小程序端方案一致 | P1 |
 
-### RAG 流水线（v2.2）
+### RAG 流水线
 
 `LLMService.getRetrievalAugmentationAdvisor` 装配 5 段流水线：
 
@@ -515,7 +530,7 @@ ReactAgent 智能体：
 - `COMPRESSION_MIN_ROUNDS = 5`
 - `RAG_QUERY_VARIANTS = 3`
 
-### ReactAgent 智能体工作流程（v2.3）
+### ReactAgent 智能体工作流程
 
 ```
 用户消息（可选携带 agent_context.candidate_words）
@@ -605,7 +620,7 @@ ReactAgent（基于 agent-system.st 提示词）
 
 ---
 
-## 十、RAG 知识库模块（v2.1 + v2.2 增强）
+## 十、RAG 知识库模块
 
 ### 模块概述
 
@@ -661,7 +676,7 @@ Admin/User 上传文档
 
 ---
 
-## 十一、AI 对话审计日志（v2.2 新增）
+## 十一、AI 对话审计日志
 
 ### 模块概述
 
@@ -725,7 +740,7 @@ created_at        TIMESTAMP
 
 ---
 
-## 十二、可观测性（v2.2 新增）
+## 十二、可观测性
 
 ### 模块概述
 
@@ -815,7 +830,7 @@ Grafana（PromQL 查询 + 仪表盘）
 
 ---
 
-## 十三、TTS 语音合成模块（v2.2）
+## 十三、TTS 语音合成模块
 
 ### 模块概述
 
@@ -896,7 +911,7 @@ created_at      TIMESTAMP
 
 ---
 
-## 十四、API Key 管理模块（v2.3 新增）
+## 十四、API Key 管理模块
 
 ### 模块概述
 

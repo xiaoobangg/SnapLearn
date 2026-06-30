@@ -46,6 +46,7 @@
             {{ promptMode === 'agent' ? 'Agent' : '聊天' }}
           </el-button>
           <el-button size="small" class="mode-btn" @click="toggleChatMode">{{ chatMode === 'stream' ? '流式' : '同步' }}</el-button>
+          <el-button size="small" type="warning" @click="showDebugPanel = !showDebugPanel">测验调试</el-button>
         </div>
       </div>
 
@@ -96,6 +97,30 @@
         </el-input>
       </div>
     </div>
+
+    <!-- 测验题调试面板 -->
+    <div class="debug-panel" v-if="showDebugPanel">
+      <div class="dp-head">
+        <span>测验题生成调试</span>
+        <el-button size="small" text @click="showDebugPanel = false">✕</el-button>
+      </div>
+      <div class="dp-body">
+        <div class="dp-row">
+          <el-input v-model="debugPrompt" placeholder="粘贴完整 prompt" size="small" type="textarea" :rows="3" style="flex:1" />
+          <el-select v-model="debugModel" size="small" style="width:110px">
+            <el-option label="DeepSeek" value="deepseek" />
+            <el-option label="DashScope" value="dashscope" />
+          </el-select>
+          <el-button size="small" type="primary" @click="runDebug" :loading="debugLoading">生成</el-button>
+        </div>
+        <div v-if="debugResult" class="dp-result">
+          <el-descriptions :column="1" size="small" border>
+            <el-descriptions-item label="耗时">{{ debugResult.durationMs }}ms</el-descriptions-item>
+            <el-descriptions-item label="LLM 返回"><pre class="dp-pre">{{ debugResult.response }}</pre></el-descriptions-item>
+          </el-descriptions>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -114,6 +139,13 @@ const model = ref<"deepseek" | "dashscope">("deepseek");
 const chatId = ref(newChatId());
 const conversations = ref<any[]>([]);
 const msgContainer = ref<HTMLElement | null>(null);
+
+// 测验调试
+const showDebugPanel = ref(false);
+const debugPrompt = ref("");
+const debugModel = ref("deepseek");
+const debugLoading = ref(false);
+const debugResult = ref<any>(null);
 
 let sseBuffer = "";
 
@@ -313,6 +345,22 @@ async function sendStream(text: string, lastIdx: number) {
 
 function updateMessage(index: number, content: string) {
   messages.value[index] = { ...messages.value[index], content };
+}
+
+async function runDebug() {
+  debugLoading.value = true;
+  debugResult.value = null;
+  try {
+    const res = await http.post("/test/debug/generate-question", {
+      prompt: debugPrompt.value,
+      model: debugModel.value,
+    });
+    debugResult.value = res.data;
+  } catch (e: any) {
+    debugResult.value = { error: e?.response?.data?.detail || e?.message || "请求失败" };
+  } finally {
+    debugLoading.value = false;
+  }
 }
 
 function scrollToBottom() {
@@ -613,6 +661,26 @@ function scrollToBottom() {
   color: #818CF8;
   font-weight: 700;
   animation: blink 0.8s infinite;
+}
+
+.debug-panel {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 700px; max-height: 80vh; background: #1e293b; border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5); z-index: 1000;
+  display: flex; flex-direction: column;
+}
+.dp-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid #334155;
+  font-size: 14px; font-weight: 600; color: #e2e8f0;
+}
+.dp-body { padding: 16px; overflow-y: auto; }
+.dp-row { display: flex; gap: 8px; align-items: center; }
+.dp-result { margin-top: 12px; }
+.dp-pre {
+  margin: 0; padding: 8px; background: #0f172a; border-radius: 6px;
+  font-size: 12px; color: #cbd5e1; white-space: pre-wrap; word-break: break-all;
+  max-height: 200px; overflow-y: auto;
 }
 
 @keyframes blink {

@@ -3,9 +3,9 @@
     <view class="tq-header"><view class="tq-progress-wrap"><text class="tq-progress-num">{{ index + 1 }}</text><text>/ {{ total }}</text></view><view class="tq-type-badge">{{ typeLabel }}</view></view>
     <view class="tq-question-card"><text>{{ question.question_text }}</text></view>
     <view class="tq-options" v-if="isSpelling">
-      <view class="spell-hint"><text>👇 点击多个选项组合成正确单词</text></view>
-      <view class="spell-preview" v-if="selectedFragments.length > 0"><text>&#x270D; 你的拼写：</text><text class="sp-preview-word">{{ composedWord }}</text></view>
-      <view v-for="(opt, oi) in parsedOptions" :key="'opt-' + oi" class="tq-option" :class="spellOptClass(opt)" @click="toggleFragment(opt)"><view class="tq-option-marker" :class="{ checked: selectedFragments.includes(opt) }">{{ selectedFragments.includes(opt) ? '✓' : optionLabel(oi) }}</view><text>{{ opt }}</text></view>
+      <view class="spell-hint"><text>👇 依次点击字母组合拼成完整单词</text></view>
+      <view class="spell-preview" v-if="composedWord"><text>&#x270D; 你的拼写：</text><text class="sp-preview-word">{{ composedWord }}</text></view>
+      <view v-for="(opt, oi) in parsedOptions" :key="'opt-' + oi" class="tq-option" :class="spellOptClass(opt)" @click="toggleFragment(opt)"><view class="tq-option-marker" :class="{ checked: isFragmentSelected(opt) }">{{ isFragmentSelected(opt) ? '✓' : optionLabel(oi) }}</view><text>{{ opt }}</text></view>
     </view>
     <view class="tq-options" v-else>
       <view v-for="(opt, oi) in parsedOptions" :key="'opt-' + oi" class="tq-option" :class="{ selected: localAnswer === opt && !showResult, correct: isCorrect && opt === question.correct_answer, wrong: showResult && localAnswer === opt && opt !== question.correct_answer }" @click="selectOption(opt)"><view class="tq-option-marker">{{ optionLabel(oi) }}</view><text>{{ opt }}</text></view>
@@ -32,8 +32,9 @@ const typeLabel = computed(() => ({ meaning_select: "看单词选释义", word_s
 		return ok;
 	});
 function optionLabel(i: number): string { return String.fromCharCode(65 + i); }
+function isFragmentSelected(opt: string): boolean { return selectedFragments.value.includes(opt); }
 function selectOption(opt: string) { localAnswer.value = opt; emit("answer", props.question.id, opt); }
-function toggleFragment(opt: string) { if (props.showResult) return; const idx = selectedFragments.value.indexOf(opt); if (idx >= 0) selectedFragments.value.splice(idx, 1); else selectedFragments.value.push(opt); emit("answer", props.question.id, selectedFragments.value.join("")); }
+function toggleFragment(opt: string) { if (props.showResult) return; const idx = selectedFragments.value.indexOf(opt); if (idx >= 0) selectedFragments.value.splice(idx, 1); else selectedFragments.value.push(opt); emit("answer", props.question.id, composedWord.value); }
 function spellOptClass(opt: string) {
   const isPartOfAnswer = props.question.correct_answer.includes(opt);
   const isSelected = selectedFragments.value.includes(opt);

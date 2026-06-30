@@ -163,7 +163,7 @@ public class ChatClientConfig {
 
         // 1. 设置超时时间
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(10_000); // 连接超时 10 秒
+        requestFactory.setConnectTimeout(20_000); // 连接超时 10 秒
         requestFactory.setReadTimeout(120_000);   // 读取超时 120 秒 (大模型生成可能较慢)
 
         // 在原有的 builder 基础上添加拦截器

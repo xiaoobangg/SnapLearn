@@ -67,7 +67,7 @@ public class VoiceEnrollmentService {
                 + "\"model\":\"voice-enrollment\","
                 + "\"input\":{"
                 + "\"action\":\"create_voice\","
-                + "\"target_model\":\"" + (targetModel != null ? targetModel : "cosyvoice-v3-flash") + "\","
+                + "\"target_model\":\"" + (targetModel != null ? targetModel : "cosyvoice-v3-plus") + "\","
                 + "\"prefix\":\"" + prefix + "\","
                 + "\"url\":\"" + escapeJson(audioUrl) + "\""
                 + "}}";

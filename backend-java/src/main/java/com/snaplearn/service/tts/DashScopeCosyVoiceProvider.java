@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
  * 阿里云 DashScope CosyVoice 非实时语音合成。
  * <p>
  * API: POST /api/v1/services/audio/tts/SpeechSynthesizer
- * 模型: cosyvoice-v3-flash（延迟要求不高，便宜，支持丰富音色）
+ * 模型: cosyvoice-v3-plus（延迟要求不高，便宜，支持丰富音色）
  * 地域: 北京（cn-beijing.maas.aliyuncs.com）
  * <p>
  * 文档: https://help.aliyun.com/zh/model-studio/cosyvoice

@@ -304,11 +304,13 @@ public class CardGroupService {
         relearnQw.eq("group_id", groupId).eq("card_status", "relearn");
         long relearn = cardMapper.selectCount(relearnQw);
 
+        CardGroup group = cardGroupMapper.selectById(groupId);
         return Map.of(
                 "total_cards", total,
                 "mastered", mastered,
                 "relearn", relearn,
-                "unlearned", total - mastered - relearn
+                "unlearned", total - mastered - relearn,
+                "group_status", group != null ? group.getGroupStatus() : ""
         );
     }
 

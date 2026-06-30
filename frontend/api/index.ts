@@ -91,7 +91,7 @@ export const api = {
   submitTest(groupId: string, answers: { questionId: string; userAnswer: string }[]): Promise<{
     total: number; correct: number; all_correct: boolean; round: number; error_card_ids: string[];
   }> {
-    return request({ url: "/test/submit", method: "POST", data: { group_id: groupId, answers } });
+    return request({ url: "/test/submit", method: "POST", data: { groupId, answers } });
   },
 
   getTestResult(groupId: string): Promise<TestResult> {
@@ -104,6 +104,9 @@ export const api = {
 
   getTestErrors(groupId: string): Promise<{ errors: any[]; total: number }> {
     return request({ url: `/test/groups/${groupId}/errors` });
+  },
+  getTestStatus(groupId: string): Promise<{ status: string; questions?: TestQuestion[]; total?: number }> {
+    return request({ url: `/test/groups/${groupId}/status` });
   },
 
   // ===== 每日打卡 =====

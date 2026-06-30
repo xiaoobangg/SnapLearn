@@ -73,7 +73,7 @@ SnapLearn/
 │   │   ├── login/           # 登录
 │   │   └── review/          # 复习（已废弃，保留兼容）
 │   ├── components/
-│   │   ├── KnowledgeStepper.vue   # v2 知识点分步学习
+│   │   ├── KnowledgeStepper.vue   # 知识点分步学习
 │   │   ├── TestQuestion.vue       # 4 类题型组件
 │   │   └── DailyCheckinCard.vue   # 打卡卡片
 │   ├── api/                 # API 封装
@@ -90,7 +90,7 @@ SnapLearn/
 │       │   │   ├── ChatTraceService.java            # AI 对话审计日志写入
 │       │   │   ├── advisor/
 │       │   │   │   └── ChatTraceLoggingAdvisor.java # CallAdvisor + StreamAdvisor
-│       │   │   ├── agent/                           # v2.3 ReactAgent 智能体
+│   │   │   ├── agent/                           # ReactAgent 智能体
 │       │   │   │   ├── AgentContext.java            # ThreadLocal 上下文
 │       │   │   │   ├── AgentScope.java              # 注解式生命周期管理
 │       │   │   │   ├── CardGroupAgentService.java   # ReactAgent 调用编排
@@ -107,7 +107,7 @@ SnapLearn/
 │       │   │   ├── VoiceService.java                # 音色管理
 │       │   │   ├── CardAudioService.java            # 卡片音频（合成+缓存）
 │       │   │   ├── CardAudioAsyncService.java       # 异步批量预生成
-│       │   │   ├── CardGroupService.java            # 卡片组（v2）
+│   │   │   ├── CardGroupService.java            # 卡片组
 │       │   │   ├── KnowledgePointService.java       # 知识点拆分/分步
 │       │   │   ├── TestService.java                 # 4 类题型生成 + 评分
 │       │   │   ├── ErrorBookService.java            # 错题本
@@ -238,9 +238,9 @@ SnapLearn/
 
 ## 数据库表结构
 
-> **架构原则**：v2 起单词结构化数据独立存储，卡片组与打卡池都通过 `word_id` 引用 `snap_word_contents`，LLM 刷新后所有引用方自动受益。
+> **架构原则**：单词结构化数据独立存储，卡片组与打卡池都通过 `word_id` 引用 `snap_word_contents`，LLM 刷新后所有引用方自动受益。
 
-### 业务核心（v2）
+### 业务核心
 
 | 表 | 说明 |
 |---|---|
@@ -259,14 +259,14 @@ SnapLearn/
 | `snap_daily_checkin_log` | 打卡日志 |
 | `snap_user_settings` | 用户偏好（每日新词数 / 复习数 + 聊天偏好 + 音色偏好） |
 
-### TTS 音色（v2.2）
+### TTS 音色
 
 | 表 | 说明 |
 |---|---|
 | `snap_voices` | 音色配置（name / provider / voice_code / tts_model / format / sample_rate / volume / speech_rate / pitch / instruction） |
 | `snap_card_audios` | 卡片音频缓存（card_id + voice_id + audio_type → audio_url） |
 
-### AI 聊天 + RAG（v2.1）
+### AI 聊天 + RAG
 
 | 表 | 说明 |
 |---|---|
@@ -275,7 +275,7 @@ SnapLearn/
 | `vector_store` | RAG 向量库（pgvector + HNSW） |
 | `snap_knowledge_files` | 上传文档元数据 |
 
-### AI 对话审计（v2.2 新增）
+### AI 对话审计
 
 | 表 | 说明 |
 |---|---|
@@ -290,7 +290,7 @@ duration_ms, status (success/error), error_message,
 created_at
 ```
 
-### ReactAgent 智能体（v2.3 新增）
+### ReactAgent 智能体
 
 | 表 | 说明 |
 |---|---|
@@ -298,7 +298,7 @@ created_at
 | `GraphCheckpoint` | 会话检查点（持久化状态数据，parent_checkpoint_id 形成链路） |
 | `snap_agent_memories` | 长期记忆（user_id + memory_key + memory_value） |
 
-### API Key 管理（v2.3 新增）
+### API Key 管理
 
 | 表 | 说明 |
 |---|---|
@@ -379,7 +379,7 @@ CardGroupService.create():
   ④ KnowledgePointService.split() 把 word_content 拆 6 个知识点
 ```
 
-### 2. 卡片组学习与测试（v2）
+### 2. 卡片组学习与测试
 
 ```
 状态机：pending → learning → learn_done → testing → test_done
@@ -403,7 +403,7 @@ DailyCheckinService.todayPush():
   不认识 → interval_days = 1（重置）
 ```
 
-### 4. AI 对话 + RAG 流水线（v2.2）
+### 4. AI 对话 + RAG 流水线
 
 [`LLMService.getRetrievalAugmentationAdvisor`](../backend-java/src/main/java/com/snaplearn/service/LLMService.java) 装配 5 段流水线：
 
@@ -493,7 +493,7 @@ TtsController / CozeTtsController / AdminVoiceController  // 按需生成
 
 **音频缓存**：`CardAudioService` 按 `(card_id, voice_id, audio_type)` 缓存，命中直接返回 URL，未命中触发实时合成。
 
-### 8. ReactAgent 智能体（v2.3）
+### 8. ReactAgent 智能体
 
 **架构**：基于 `spring-ai-alibaba-agent-framework` 的 ReactAgent，支持对话式创建卡片组。
 
@@ -544,7 +544,7 @@ ReactAgent（基于 agent-system.st 提示词）
 
 ---
 
-## 可观测性（v2.2 新增）
+## 可观测性
 
 ### 链路
 

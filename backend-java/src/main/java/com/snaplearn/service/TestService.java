@@ -1,6 +1,7 @@
 package com.snaplearn.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.snaplearn.common.exception.BusinessException;
@@ -27,7 +28,6 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class TestService {
 
     private final TestQuestionMapper testQuestionMapper;
@@ -44,69 +44,136 @@ public class TestService {
 
     private static final List<String> QUESTION_TYPES = List.of("meaning_select", "word_select", "collocation", "spelling");
 
-    // 并行调用 LLM 的线程池
-    private static final ExecutorService TEST_EXECUTOR = Executors.newFixedThreadPool(2);
+    // 后台生成编排线程（外层 generateAsync）
+    private static final ExecutorService TEST_GEN_EXECUTOR = Executors.newFixedThreadPool(1);
+    // 并行调用 LLM 的线程池（内层 generateQuestion）
+    private static final ExecutorService TEST_LLM_EXECUTOR = Executors.newFixedThreadPool(1);
 
-    public List<TestQuestion> generateTest(String groupId, String userId) {
+    /**
+     * 测验入口：已有题目直接返回，无题目则 CAS 设 generating 并启动后台生成。
+     */
+    @Transactional
+    public Map<String, Object> startTest(String groupId, String userId) {
         CardGroup group = cardGroupMapper.selectById(groupId);
         if (group == null || !group.getUserId().equals(userId)) {
             throw new BusinessException(404, "卡片组不存在");
         }
-        if (!"learn_done".equals(group.getGroupStatus()) && !"testing".equals(group.getGroupStatus())) {
-            throw new BusinessException(400, "只有学习完成的卡片组才能测试");
-        }
 
-        // 已有题目则直接复用，不再调 LLM
+        // 已有题目 → 直接返回
         QueryWrapper<TestQuestion> existQw = new QueryWrapper<>();
         existQw.eq("group_id", groupId).orderByAsc("sort_order");
         List<TestQuestion> existing = testQuestionMapper.selectList(existQw);
         if (!existing.isEmpty()) {
-            return existing;
+            return Map.of("status", "ready", "questions", existing, "total", existing.size());
         }
 
-        QueryWrapper<TestQuestion> delQw = new QueryWrapper<>();
-        delQw.eq("group_id", groupId);
-        testQuestionMapper.delete(delQw);
-
-        QueryWrapper<Card> cardQw = new QueryWrapper<>();
-        cardQw.eq("group_id", groupId).orderByAsc("sort_order");
-        List<Card> cards = cardMapper.selectList(cardQw);
-        if (cards.isEmpty()) {
-            throw new BusinessException(400, "卡片组中没有卡片");
+        // 正在生成中 → 返回 generating
+        if ("generating".equals(group.getGroupStatus())) {
+            return Map.of("status", "generating");
         }
 
-        // 1. 主线程收集卡片数据：每个单词 × 4 种题型
-        record CardData(Card card, Word word, WordContent wc, String type, int order) {
+        // 状态检查：只有 learn_done 允许进入生成
+        if (!"learn_done".equals(group.getGroupStatus())) {
+            throw new BusinessException(400, "只有学习完成的卡片组才能测试");
         }
-        List<CardData> cardDataList = new ArrayList<>();
-        int order = 0;
-        for (Card card : cards) {
-            Word word = wordMapper.selectById(card.getWordId());
-            if (word == null) {
-                continue;
+
+        // CAS：原子抢占生成权
+        UpdateWrapper<CardGroup> uw = new UpdateWrapper<>();
+        uw.eq("id", groupId).eq("group_status", "learn_done");
+        uw.set("group_status", "generating");
+        int rows = cardGroupMapper.update(null, uw);
+        if (rows == 0) {
+            // 没抢到——重新查状态
+            group = cardGroupMapper.selectById(groupId);
+            if ("generating".equals(group.getGroupStatus())) {
+                return Map.of("status", "generating");
             }
-            WordContent wc = wordContentMapper.selectById(card.getWordId());
-            for (String type : QUESTION_TYPES) {
-                cardDataList.add(new CardData(card, word, wc, type, order++));
+            // 可能被其他请求抢到并已完成
+            existing = testQuestionMapper.selectList(existQw);
+            if (!existing.isEmpty()) {
+                return Map.of("status", "ready", "questions", existing, "total", existing.size());
             }
+            throw new BusinessException(400, "当前状态不可测试");
         }
 
-        // 2. 并行调用 LLM 生成题目（不操作数据库）
-        List<CompletableFuture<TestQuestion>> futures = new ArrayList<>();
-        for (CardData cd : cardDataList) {
-            futures.add(CompletableFuture.supplyAsync(() -> generateQuestion(cd.type, cd.card, cd.word, cd.wc, groupId, cd.order), TEST_EXECUTOR));
+        // 抢到 → 后台异步生成
+        CompletableFuture.runAsync(() -> generateAsync(groupId), TEST_GEN_EXECUTOR);
+        return Map.of("status", "generating");
+    }
+
+    /** 后台 LLM 生成 → 插题 → 改状态 */
+    private void generateAsync(String groupId) {
+        try {
+            log.info("[TEST-GEN] 开始后台生成 groupId={}", groupId);
+
+            QueryWrapper<TestQuestion> delQw = new QueryWrapper<>();
+            delQw.eq("group_id", groupId);
+            testQuestionMapper.delete(delQw);
+
+            QueryWrapper<Card> cardQw = new QueryWrapper<>();
+            cardQw.eq("group_id", groupId).orderByAsc("sort_order");
+            List<Card> cards = cardMapper.selectList(cardQw);
+            if (cards.isEmpty()) {
+                resetGenStatus(groupId);
+                return;
+            }
+
+            record CardData(Card card, Word word, WordContent wc, String type, int order) {}
+            List<CardData> cardDataList = new ArrayList<>();
+            int order = 0;
+            for (Card card : cards) {
+                Word word = wordMapper.selectById(card.getWordId());
+                if (word == null) continue;
+                WordContent wc = wordContentMapper.selectById(card.getWordId());
+                for (String type : QUESTION_TYPES) {
+                    cardDataList.add(new CardData(card, word, wc, type, order++));
+                }
+            }
+
+            List<CompletableFuture<TestQuestion>> futures = new ArrayList<>();
+            for (CardData cd : cardDataList) {
+                futures.add(CompletableFuture.supplyAsync(() -> generateQuestion(cd.type, cd.card, cd.word, cd.wc, groupId, cd.order), TEST_LLM_EXECUTOR));
+            }
+
+            List<TestQuestion> questions = futures.stream().map(CompletableFuture::join).collect(Collectors.toList());
+            for (TestQuestion q : questions) {
+                testQuestionMapper.insert(q);
+            }
+
+            CardGroup group = cardGroupMapper.selectById(groupId);
+            if (group != null && "generating".equals(group.getGroupStatus())) {
+                group.setGroupStatus("testing");
+                cardGroupMapper.updateById(group);
+            }
+            log.info("[TEST-GEN] 完成 groupId={} count={}", groupId, questions.size());
+        } catch (Exception e) {
+            log.error("[TEST-GEN] 失败 groupId={}", groupId, e);
+            resetGenStatus(groupId);
         }
+    }
 
-        // 3. 等待全部完成，统一插入数据库
-        List<TestQuestion> questions = futures.stream().map(CompletableFuture::join).collect(Collectors.toList());
-        for (TestQuestion q : questions) {
-            testQuestionMapper.insert(q);
+    private void resetGenStatus(String groupId) {
+        CardGroup group = cardGroupMapper.selectById(groupId);
+        if (group != null && "generating".equals(group.getGroupStatus())) {
+            group.setGroupStatus("learn_done");
+            cardGroupMapper.updateById(group);
         }
+    }
 
-        group.setGroupStatus("testing");
-        cardGroupMapper.updateById(group);
-
-        return questions;
+    /** 状态查询（前端轮询） */
+    public Map<String, Object> getTestStatus(String groupId, String userId) {
+        CardGroup group = cardGroupMapper.selectById(groupId);
+        if (group == null || !group.getUserId().equals(userId)) {
+            throw new BusinessException(404, "卡片组不存在");
+        }
+        String status = group.getGroupStatus();
+        if ("testing".equals(status) || "test_done".equals(status)) {
+            QueryWrapper<TestQuestion> qw = new QueryWrapper<>();
+            qw.eq("group_id", groupId).orderByAsc("sort_order");
+            List<TestQuestion> questions = testQuestionMapper.selectList(qw);
+            return Map.of("status", status, "questions", questions, "total", questions.size());
+        }
+        return Map.of("status", status);
     }
 
     private TestQuestion generateQuestion(String type, Card card, Word word, WordContent wc, String groupId, int order) {
@@ -114,24 +181,16 @@ public class TestService {
         String prompt = buildQuestionPrompt(type, wordText, wc);
         Exception lastException = null;
         ChatClient currentClient = ChatClient.builder(deepSeekChatModel).build();
-        String currentModelName = "DeepSeek";
 
-        // 前 MAX_RETRY_TIMES 次：使用 DeepSeek 重试
-        for (int attempt = 1; attempt <= Constant.MAX_RETRY_TIMES; attempt++) {
-            try {
-                return doGenerateQuestion(currentClient, prompt, type, card, word, wc, groupId, order);
-            } catch (Exception e) {
-                lastException = e;
-                log.warn("[{}] 生成题目失败，单词：{}，第{}次重试", currentModelName, wordText, attempt);
-
-                if (attempt < Constant.MAX_RETRY_TIMES) {
-                    sleepQuietly(Constant.RETRY_SLEEP_MS);
-                }
-            }
+        // DeepSeek 尝试 1 次（测验题长文本场景容易慢，不反复重试）
+        try {
+            return doGenerateQuestion(currentClient, prompt, type, card, word, wc, groupId, order);
+        } catch (Exception e) {
+            log.warn("[DeepSeek] 生成题目失败，单词：{}，直接切换 DashScope 兜底", wordText);
         }
 
-        // 三次 DeepSeek 全部失败 → 切换 通义千问 兜底执行一次
-        log.warn("DeepSeek 重试{}次全部失败，切换至 DashScope(通义千问) 兜底生成，单词：{}", Constant.MAX_RETRY_TIMES, wordText);
+        // DeepSeek 失败 → 切换通义千问兜底
+        log.warn("切换至 DashScope(通义千问) 兜底生成，单词：{}", wordText);
         try {
             currentClient = ChatClient.builder(dashScopeChatModel).build();
             return doGenerateQuestion(currentClient, prompt, type, card, word, wc, groupId, order);
@@ -143,25 +202,24 @@ public class TestService {
     }
 
     /**
-     * 静默休眠，不向上抛出中断异常
-     */
-    private void sleepQuietly(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.warn("线程休眠被中断");
-        }
-    }
-
-    /**
      * 执行单次题目生成 + JSON 解析 + 实体封装
      */
     private TestQuestion doGenerateQuestion(ChatClient chatClient, String prompt, String type, Card card, Word word, WordContent wc, String groupId, int order) throws Exception {
-        // 调用 LLM
-        String llmResponse = chatClient.prompt().user(prompt).call().content();
+        long start = System.currentTimeMillis();
+        String wordText = word.getWordText();
+        log.info("[TEST-LLM] PROMPT word={} type={}: {}", wordText, type, prompt);
 
-        // 解析 JSON
+        String llmResponse;
+        try {
+            llmResponse = chatClient.prompt().user(prompt).call().content();
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - start;
+            log.error("[TEST-LLM] 调用失败 word={} type={} duration={}ms error={} PROMPT={}",
+                    wordText, type, duration, e.toString(), prompt);
+            throw e;
+        }
+        long duration = System.currentTimeMillis() - start;
+        log.info("[TEST-LLM] RESPONSE word={} type={} duration={}ms: {}", wordText, type, duration, llmResponse);
         JsonNode node = objectMapper.readTree(llmResponse);
         String questionText = node.path("question").asText("");
         String answer = node.path("answer").asText("");
@@ -212,7 +270,9 @@ public class TestService {
         return testQuestionMapper.selectList(qw);
     }
 
+    @Transactional
     public Map<String, Object> submitAnswers(String groupId, String userId, List<AnswerItem> answers) {
+        log.info("[TEST-SUBMIT] 入参 groupId={} userId={} answerCount={}", groupId, userId, answers != null ? answers.size() : 0);
         CardGroup group = cardGroupMapper.selectById(groupId);
         if (group == null || !group.getUserId().equals(userId)) {
             throw new BusinessException(404, "卡片组不存在");
@@ -254,9 +314,13 @@ public class TestService {
         int total = answers.size();
         boolean allCorrect = total > 0 && correctCount == total;
 
+        log.info("[TEST-GEN] submitAnswers groupId={} total={} correct={} allCorrect={}",
+                groupId, total, correctCount, allCorrect);
+
         if (allCorrect) {
             group.setGroupStatus("test_done");
             cardGroupMapper.updateById(group);
+            log.info("[TEST-GEN] groupId={} 状态已更新为 test_done", groupId);
         }
 
         return Map.of("total", total, "correct", correctCount, "all_correct", allCorrect, "round", round, "error_card_ids", errorCardIds);
@@ -287,6 +351,32 @@ public class TestService {
         return Map.of("questions", items, "total", questions.size(), "correct", correct, "all_correct", correct == questions.size(), "group_status", group != null ? group.getGroupStatus() : "");
     }
 
-    public record AnswerItem(String questionId, String userAnswer) {
+    /** 调试入口：直接传 prompt，省去拼装逻辑 */
+    public Map<String, Object> debugGenerate(String prompt, String model) {
+        ChatClient client = "dashscope".equalsIgnoreCase(model)
+                ? ChatClient.builder(dashScopeChatModel).build()
+                : ChatClient.builder(deepSeekChatModel).build();
+
+        long start = System.currentTimeMillis();
+        try {
+            String llmResponse = client.prompt().user(prompt).call().content();
+            long duration = System.currentTimeMillis() - start;
+            return Map.of(
+                    "success", true,
+                    "model", model,
+                    "durationMs", duration,
+                    "response", llmResponse
+            );
+        } catch (Exception e) {
+            return Map.of(
+                    "success", false,
+                    "model", model,
+                    "durationMs", System.currentTimeMillis() - start,
+                    "error", e.getClass().getSimpleName() + ": " + e.getMessage()
+            );
+        }
+    }
+
+    public record AnswerItem(@com.fasterxml.jackson.annotation.JsonProperty("questionId") String questionId, @com.fasterxml.jackson.annotation.JsonProperty("userAnswer") String userAnswer) {
     }
 }
