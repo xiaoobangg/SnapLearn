@@ -46,4 +46,11 @@ public class ApiKeyController {
         apiKeyService.revoke(id, userId);
         return Map.of("ok", true);
     }
+
+    /** 物理删除（仅允许删除已撤销的记录） */
+    @DeleteMapping("/{id}/delete")
+    public Map<String, Object> delete(@PathVariable String id, @CurrentUser String userId) {
+        apiKeyService.delete(id, userId);
+        return Map.of("ok", true);
+    }
 }

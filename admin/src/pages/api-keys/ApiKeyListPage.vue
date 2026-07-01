@@ -15,9 +15,10 @@
       </el-table-column>
       <el-table-column prop="last_used_at" label="最后使用" width="170" />
       <el-table-column prop="created_at" label="创建时间" width="170" />
-      <el-table-column label="操作" width="80" align="center">
+      <el-table-column label="操作" width="160" align="center">
         <template #default="{ row }">
           <el-button v-if="row.is_active" size="small" link type="danger" @click="doRevoke(row)">撤销</el-button>
+          <el-button v-else size="small" link type="warning" @click="doDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -89,12 +90,21 @@ async function copyKey() {
 }
 
 async function doRevoke(row: any) {
-  try { await ElMessageBox.confirm("确定撤销？", "提示", { type: "warning" }); } catch { return; }
+  try { await ElMessageBox.confirm("确定撤销？撤销后可删除记录", "提示", { type: "warning" }); } catch { return; }
   try {
     await http.delete(`/api-keys/${row.id}`);
     ElMessage.success("已撤销");
     loadData();
   } catch { ElMessage.error("撤销失败"); }
+}
+
+async function doDelete(row: any) {
+  try { await ElMessageBox.confirm("确定删除此记录？删除后不可恢复", "提示", { type: "warning" }); } catch { return; }
+  try {
+    await http.delete(`/api-keys/${row.id}/delete`);
+    ElMessage.success("已删除");
+    loadData();
+  } catch { ElMessage.error("删除失败"); }
 }
 
 async function loadData() {

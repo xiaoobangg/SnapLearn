@@ -56,6 +56,14 @@ public class ApiKeyService {
         }
     }
 
+    /** 物理删除（仅允许删除已撤销的记录） */
+    public void delete(String id, String userId) {
+        ApiKey k = apiKeyMapper.selectById(id);
+        if (k != null && k.getUserId().equals(userId) && !k.getIsActive()) {
+            apiKeyMapper.deleteById(id);
+        }
+    }
+
     /** 按 hash 查 Key，通过则更新 last_used_at */
     public ApiKey authenticate(String rawKey) {
         String hash = sha256(rawKey);
