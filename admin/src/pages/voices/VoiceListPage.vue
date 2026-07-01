@@ -118,12 +118,23 @@
     </el-dialog>
 
     <!-- 官方音色库弹窗 -->
-    <el-dialog v-model="catalogVisible" title="官方音色库（勾选后导入）" width="700px">
+    <el-dialog v-model="catalogVisible" title="官方音色库（cosyvoice-v3-flash，勾选后导入）" width="900px">
       <el-table :data="catalogList" stripe max-height="400" @selection-change="onCatalogSelect" ref="catalogTable">
         <el-table-column type="selection" width="50" />
         <el-table-column prop="name" label="名称" min-width="160" />
-        <el-table-column prop="voice_code" label="音色标识" width="200" />
-        <el-table-column prop="language" label="语言" width="90" align="center" />
+        <el-table-column prop="voice_code" label="音色标识" width="180" />
+        <el-table-column prop="language" label="语言" width="100" align="center" />
+        <el-table-column prop="features" label="特性" width="140" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.features && row.features !== '-'" size="small" type="success">{{ row.features }}</el-tag>
+            <span v-else style="color:#c0c4cc">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="model" label="模型" width="170" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" type="warning">{{ row.model }}</el-tag>
+          </template>
+        </el-table-column>
       </el-table>
       <template #footer>
         <el-button @click="catalogVisible = false">取消</el-button>
