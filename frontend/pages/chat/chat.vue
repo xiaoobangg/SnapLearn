@@ -39,7 +39,7 @@
 		</view>
 		<view class="chat-input-bar">
 			<view class="ci-camera" @click="handleCamera"><text>📷</text></view>
-			<input class="ci-input" v-model="inputText" placeholder="✍ 输入你的问题..." confirm-type="send" @confirm="sendMessage" :disabled="streaming" />
+			<textarea class="ci-input" v-model="inputText" placeholder="✍ 输入你的问题..." :disabled="streaming" :auto-height="true" :show-confirm-bar="false" :adjust-position="true" maxlength="-1" cursor-spacing="20" />
 			<view class="ci-btn" :class="{ disabled: !inputText.trim() || streaming }" @click="sendMessage"><text v-if="!streaming">🚀 发送</text><text v-else>⏳</text></view>
 		</view>
 	</view>
@@ -213,8 +213,8 @@
 	.user .cm-bubble{background:$gradient-primary;color:#fff}
 	.cm-cursor{display:inline;color:#fff;animation:blink 0.8s infinite}
 	@keyframes blink{50%{opacity:0}}
-	.ci-camera{width:64rpx;height:64rpx;display:flex;align-items:center;justify-content:center;font-size:40rpx;background:$bg-primary;border-radius:50%;flex-shrink:0}
-	.chat-input-bar{flex-shrink:0;display:flex;align-items:center;gap:$spacing-base;padding:$spacing-base $spacing-xl;background:$bg-card;border-top:2rpx solid $border-light;.ci-input{flex:1;height:72rpx;background:$bg-primary;border-radius:$radius-pill;padding:0 $spacing-lg;font-size:$font-base}.ci-btn{padding:16rpx 32rpx;background:$gradient-primary;color:#fff;border-radius:$radius-pill;font-size:$font-base;box-shadow:$shadow-sm}}
+	.ci-camera{width:64rpx;height:64rpx;display:flex;align-items:center;justify-content:center;font-size:40rpx;background:$bg-primary;border-radius:50%;flex-shrink:0;align-self:flex-end}
+	.chat-input-bar{flex-shrink:0;display:flex;align-items:flex-end;gap:$spacing-base;padding:$spacing-base $spacing-xl;background:$bg-card;border-top:2rpx solid $border-light;.ci-input{flex:1;min-height:72rpx;max-height:240rpx;background:$bg-primary;border-radius:$radius-md;padding:16rpx $spacing-lg;font-size:$font-base;line-height:1.5;box-sizing:border-box;overflow-y:auto}.ci-btn{padding:16rpx 32rpx;background:$gradient-primary;color:#fff;border-radius:$radius-pill;font-size:$font-base;box-shadow:$shadow-sm;flex-shrink:0;align-self:flex-end}}
 	.conv-item{display:flex;align-items:center;padding:24rpx 0;border-bottom:2rpx solid $border-light;font-size:$font-base;&:active{background:$bg-primary}}
 	.conv-title{flex:1}
 	.conv-del{padding:8rpx 16rpx;font-size:28rpx;&:active{opacity:0.5}}

@@ -57,8 +57,8 @@
 			<view class="bottom-bar"
 				v-if="currentCard && (currentCard.knowledgePoints||[]).length > 0 && currentCard.cardStatus !== 'mastered'">
 				<view class="kp-actions">
-					<view class="kp-btn relearn" @click="markRelearn(currentIndex)">&#x1F504; 需再学</view>
-					<view class="kp-btn confirm" @click="markMastered(currentIndex)">&#x2705; 确认已学</view>
+					<view class="kp-btn relearn" @click="markRelearn(currentIndex)">&#x1F504; 没拿捏</view>
+					<view class="kp-btn confirm" @click="markMastered(currentIndex)">&#x2705; 拿捏了</view>
 				</view>
 			</view>
 		</template>
@@ -76,7 +76,6 @@
 	const currentCard = computed(() => props.cards[currentIndex.value] || null);
 	const displayAllCards = computed(() => props.allCards.length > 0 ? props.allCards : props.cards);
 	const processedCount = computed(() => masteredCards.size + relearnCards.size);
-	// Stable dependency: watch card IDs string, not array reference — avoids reactivity loops
 	const cardIdList = computed(() => props.cards.map(c => cardId(c)).join(','));
 	function syncCardStatuses() {
 		if (!props.cards || props.cards.length === 0) return;
@@ -89,8 +88,6 @@
 			}
 		});
 		if (changed) {
-			// Double-guard: only set finished=true if (a) findNextUnprocessed returns -1
-			// AND (b) no card has a data-level status of "relearn" or "unlearned".
 			if (findNextUnprocessed(0) < 0) {
 				const hasUnprocessed = props.cards.some(c => {
 					const s = (c as any).cardStatus || (c as any).card_status || "";
@@ -109,8 +106,19 @@
 	function cardId(card : CardLike) : string { return card[props.cardIdKey] || ""; }
 	function onSwipeChange(e : any) { currentIndex.value = e.detail.current; }
 	function kpTypeLabel(type : string) : string { return ({ pronunciation: "发音", pos: "词性", general_meaning: "释义", extended_meaning: "延伸义", example_sentence: "例句", memory_tip: "记忆技巧" }[type] || type); }
-	async function markMastered(i : number) { const card = props.cards[i]; if (!card) return; try { const res = await api.markCard(card.id, true); groupStatus.value = (res as any).group_status || ""; } catch (_e) { } masteredCards.add(cardId(card)); emit("mastered", cardId(card)); advanceCard(i); }
-	async function markRelearn(i : number) { const card = props.cards[i]; if (!card) return; try { const res = await api.markCard(card.id, false); groupStatus.value = (res as any).group_status || ""; } catch (_e) { } relearnCards.add(cardId(card)); emit("relearn", cardId(card)); advanceCard(i); }
+	async function markMastered(i : number) {
+		const card = props.cards[i]; if (!card) return;
+		try { const res = await api.markCard(card.id, true); groupStatus.value = (res as any).group_status || ""; } catch (_e) { }
+		masteredCards.add(cardId(card)); emit("mastered", cardId(card));
+		// If backend confirms all cards are done, force-complete regardless of local state
+		if (groupStatus.value === 'learn_done') { finished.value = true; return; }
+		advanceCard(i);
+	}
+	async function markRelearn(i : number) {
+		const card = props.cards[i]; if (!card) return;
+		try { const res = await api.markCard(card.id, false); groupStatus.value = (res as any).group_status || ""; } catch (_e) { }
+		relearnCards.add(cardId(card)); emit("relearn", cardId(card)); advanceCard(i);
+	}
 	function advanceCard(from : number) { const next = findNextUnprocessed(from); if (next >= 0) currentIndex.value = next; else finished.value = true; }
 	function findNextUnprocessed(from : number) : number { for (let j = from + 1; j < props.cards.length; j++) { const id = cardId(props.cards[j]); if (!masteredCards.has(id) && !relearnCards.has(id)) return j; } for (let j = 0; j < from; j++) { const id = cardId(props.cards[j]); if (!masteredCards.has(id) && !relearnCards.has(id)) return j; } return -1; }
 	function startRelearn() { const ids = Array.from(relearnCards); masteredCards.clear(); relearnCards.clear(); finished.value = false; currentIndex.value = 0; groupStatus.value = ""; emit("relearnRound", ids); }

@@ -501,7 +501,7 @@
   }
   .group-count { font-size: $font-sm; font-weight: $font-weight-bold; color: $primary; background: $bg-secondary; padding: 6rpx 16rpx; border-radius: $radius-pill; display: inline-block; margin-bottom: $spacing-xs; }
   .group-date { font-size: 22rpx; color: $text-muted; display: block; }
-  .group-test-btn { font-size: 22rpx; color: $primary; font-weight: $font-weight-bold; margin-top: $spacing-xs; padding: 8rpx 18rpx; background: $bg-secondary; border-radius: $radius-pill; display: inline-block; }
+  .group-test-btn { font-size: 28rpx; color: #fff; font-weight: $font-weight-bold; margin-top: $spacing-sm; padding: 16rpx 36rpx; background: $gradient-primary; border-radius: $radius-pill; display: inline-block; box-shadow: 0 6rpx 16rpx rgba(255, 138, 155, 0.35); letter-spacing: 1rpx; }
 }
 
 .empty-state { display: flex; flex-direction: column; align-items: center; padding-top: 160rpx;
