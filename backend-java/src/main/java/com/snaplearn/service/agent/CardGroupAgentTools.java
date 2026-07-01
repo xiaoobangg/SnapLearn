@@ -169,7 +169,7 @@ public class CardGroupAgentTools {
             if (w != null && !w.isBlank()) deduped.add(w.trim().toLowerCase());
         }
         List<String> wordList = new ArrayList<>(deduped);
-        String finalTitle = (title != null && !title.isBlank()) ? title : ("新卡片组 · " + wordList.size() + "词");
+        String finalTitle = (title != null && !title.isBlank()) ? title : "学习卡片组";
         log.info("[AGENT-TOOL] createCardGroup userId={} title='{}' wordCount={}", userId(toolContext), finalTitle, wordList.size());
         try {
             CardCreateRequest req = new CardCreateRequest(null, null, wordList);

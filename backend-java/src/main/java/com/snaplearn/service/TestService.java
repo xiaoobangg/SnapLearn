@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -64,7 +65,7 @@ public class TestService {
         existQw.eq("group_id", groupId).orderByAsc("sort_order");
         List<TestQuestion> existing = testQuestionMapper.selectList(existQw);
         if (!existing.isEmpty()) {
-            return Map.of("status", "ready", "questions", existing, "total", existing.size());
+            return Map.of("status", "ready", "questions", shuffleQuestionsAndOptions(existing), "total", existing.size());
         }
 
         // 正在生成中 → 返回 generating
@@ -91,7 +92,7 @@ public class TestService {
             // 可能被其他请求抢到并已完成
             existing = testQuestionMapper.selectList(existQw);
             if (!existing.isEmpty()) {
-                return Map.of("status", "ready", "questions", existing, "total", existing.size());
+                return Map.of("status", "ready", "questions", shuffleQuestionsAndOptions(existing), "total", existing.size());
             }
             throw new BusinessException(400, "当前状态不可测试");
         }
@@ -171,7 +172,7 @@ public class TestService {
             QueryWrapper<TestQuestion> qw = new QueryWrapper<>();
             qw.eq("group_id", groupId).orderByAsc("sort_order");
             List<TestQuestion> questions = testQuestionMapper.selectList(qw);
-            return Map.of("status", status, "questions", questions, "total", questions.size());
+            return Map.of("status", status, "questions", shuffleQuestionsAndOptions(questions), "total", questions.size());
         }
         return Map.of("status", status);
     }
@@ -267,7 +268,34 @@ public class TestService {
 
         QueryWrapper<TestQuestion> qw = new QueryWrapper<>();
         qw.eq("group_id", groupId).orderByAsc("sort_order");
-        return testQuestionMapper.selectList(qw);
+        return shuffleQuestionsAndOptions(testQuestionMapper.selectList(qw));
+    }
+
+    /**
+     * 加载测试题给前端时：打乱题目顺序 + 打乱每题选项顺序。
+     * 注意：correct_answer 存的是选项的值而非索引，打乱 options 数组顺序不影响正误校验。
+     * 生成题目时保持 sort_order 不变，仅此处查询返回前打乱，DB 数据不动。
+     */
+    private List<TestQuestion> shuffleQuestionsAndOptions(List<TestQuestion> questions) {
+        if (questions == null || questions.isEmpty()) {
+            return questions;
+        }
+        List<TestQuestion> shuffled = new ArrayList<>(questions);
+        Collections.shuffle(shuffled);
+        for (TestQuestion q : shuffled) {
+            try {
+                JsonNode node = objectMapper.readTree(q.getOptions());
+                if (node != null && node.isArray() && node.size() > 1) {
+                    List<String> opts = new ArrayList<>();
+                    node.forEach(o -> opts.add(o.isTextual() ? o.asText() : o.toString()));
+                    Collections.shuffle(opts);
+                    q.setOptions(objectMapper.writeValueAsString(opts));
+                }
+            } catch (Exception e) {
+                log.warn("打乱选项失败 questionId={}: {}", q.getId(), e.getMessage());
+            }
+        }
+        return shuffled;
     }
 
     @Transactional

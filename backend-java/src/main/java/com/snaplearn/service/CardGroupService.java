@@ -37,7 +37,7 @@ public class CardGroupService {
     public CardGroupResponse create(String userId, CardCreateRequest req) {
         String groupId = UUID.randomUUID().toString();
         String src = req.sourceText() != null && !req.sourceText().isBlank() ? req.sourceText() : null;
-        String title = src != null ? (src.length() > 50 ? src.substring(0, 50) : src) : "手动输入 · " + req.selectedWords().size() + "词";
+        String title = src != null ? (src.length() > 50 ? src.substring(0, 50) : src) : "学习卡片组";
 
         CardGroup group = new CardGroup();
         group.setId(groupId);
