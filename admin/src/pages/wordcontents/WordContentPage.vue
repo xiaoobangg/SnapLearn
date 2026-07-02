@@ -106,22 +106,22 @@ async function handleRefresh(wordId: string) {
 
 <style lang="scss" scoped>
 .word-content-page {
-  background: rgba(30, 41, 59, 0.95);
-  border-radius: 16px;
+  background: #FFFFFF;
+  border-radius: 12px;
   padding: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
 
   .page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    h2 { 
-      font-size: 18px; 
-      font-weight: 600; 
+    h2 {
+      font-size: 18px;
+      font-weight: 600;
       margin: 0;
-      color: #F8FAFC;
+      color: #1F2937;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -130,7 +130,7 @@ async function handleRefresh(wordId: string) {
         content: "";
         width: 4px;
         height: 20px;
-        background: linear-gradient(180deg, #4F46E5, #06B6D4);
+        background: linear-gradient(180deg, #4D6BFE, #8B5CF6);
         border-radius: 2px;
       }
     }
@@ -140,7 +140,7 @@ async function handleRefresh(wordId: string) {
     justify-content: flex-end;
     margin-top: 20px;
     padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid #E5E7EB;
   }
 }
 </style>

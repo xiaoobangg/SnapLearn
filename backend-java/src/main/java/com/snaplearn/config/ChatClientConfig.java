@@ -58,11 +58,28 @@ public class ChatClientConfig {
         return new JdbcTemplate(dataSource);
     }*/
 
+    /**
+     * 会话记忆持久化仓库，基于 JDBC（PostgreSQL）。
+     * <p>
+     * Spring AI 框架自动管理 spring_ai_chat_memory 表的创建和读写，
+     * 存储每轮对话的 user/assistant 消息，供 MessageChatMemoryAdvisor 加载历史上下文。
+     *
+     * @param jdbcTemplate 业务库 JdbcTemplate（复用主数据源）
+     * @return JDBC 记忆仓库实例
+     */
     @Bean
     public ChatMemoryRepository chatMemoryRepository(JdbcTemplate jdbcTemplate) {
         return JdbcChatMemoryRepository.builder().jdbcTemplate(jdbcTemplate).build();
     }
 
+    /**
+     * 会话记忆管理器，采用滑动窗口策略保留最近 20 条消息。
+     * <p>
+     * 超过窗口大小的历史消息会被自动丢弃，避免上下文过长导致 token 消耗过高。
+     *
+     * @param repository 记忆持久化仓库
+     * @return 滑动窗口记忆管理器实例
+     */
     @Bean
     public ChatMemory chatMemory(ChatMemoryRepository repository) {
         return MessageWindowChatMemory.builder().chatMemoryRepository(repository).maxMessages(20).build();
@@ -80,6 +97,16 @@ public class ChatClientConfig {
         return PgVectorStore.builder(jdbcTemplate, embeddingModel).build();
     }*/
 
+    /**
+     * DeepSeek ChatClient 单例，默认挂载会话记忆 advisor。
+     * <p>
+     * 通过 MessageChatMemoryAdvisor 自动加载/保存 chatId 对应的历史消息，
+     * 实现多轮对话上下文记忆。适用于不需要 RAG 的普通对话场景。
+     *
+     * @param chatModel  DeepSeek ChatModel（由 Spring AI 自动注入）
+     * @param chatMemory 会话记忆管理器
+     * @return 配置好记忆 advisor 的 ChatClient
+     */
     @Bean
     public ChatClient deepSeekChatClient(DeepSeekChatModel chatModel, ChatMemory chatMemory) {
         MessageChatMemoryAdvisor chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory).build();
@@ -88,6 +115,15 @@ public class ChatClientConfig {
                 .build();
     }
 
+    /**
+     * DashScope ChatClient 单例，默认挂载会话记忆 advisor。
+     * <p>
+     * 功能同 {@link #deepSeekChatClient}，但使用通义千问模型。适用于不需要 RAG 的普通对话场景。
+     *
+     * @param chatModel  DashScope ChatModel（由 Spring AI 自动注入）
+     * @param chatMemory 会话记忆管理器
+     * @return 配置好记忆 advisor 的 ChatClient
+     */
     @Bean
     public ChatClient dashScopeChatClient(DashScopeChatModel chatModel, ChatMemory chatMemory) {
         MessageChatMemoryAdvisor chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory).build();
@@ -97,17 +133,19 @@ public class ChatClientConfig {
     }
 
     /**
-     * 使用 Rag 进行查询，无法限制用户与文档关系
+     * DeepSeek ChatClient（带 RAG），挂载会话记忆 + 知识库检索 advisor。
+     * <p>
+     * 通过 RetrievalAugmentationAdvisor 从向量库召回相关文档，增强 LLM 回答的准确性。
+     * 注意：此 Bean 未做用户级文档隔离，如需按 userId 过滤，请在 service 层动态构建 advisor。
      *
-     * @param chatModel
-     * @param chatMemory
-     * @param vectorStore
-     * @return
+     * @param chatModel   DeepSeek ChatModel
+     * @param chatMemory  会话记忆管理器
+     * @param vectorStore 向量库（用于 RAG 检索）
+     * @return 配置好记忆 + RAG advisor 的 ChatClient
      */
     @Bean
     public ChatClient deepSeekChatRagClient(DeepSeekChatModel chatModel, ChatMemory chatMemory, VectorStore vectorStore) {
         MessageChatMemoryAdvisor chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory).build();
-        // QuestionAnswerAdvisor questionAnswerAdvisor = QuestionAnswerAdvisor.builder(vectorStore)
         RetrievalAugmentationAdvisor ragAdvisor = buildRagAdvisor(vectorStore);
         return ChatClient.builder(chatModel)
                 .defaultAdvisors(chatMemoryAdvisor, ragAdvisor)
@@ -115,12 +153,15 @@ public class ChatClientConfig {
     }
 
     /**
-     * 使用 Rag 进行查询，无法限制用户与文档关系
+     * DashScope ChatClient（带 RAG），挂载会话记忆 + 知识库检索 advisor。
+     * <p>
+     * 功能同 {@link #deepSeekChatRagClient}，但使用通义千问模型。
+     * 注意：此 Bean 未做用户级文档隔离，如需按 userId 过滤，请在 service 层动态构建 advisor。
      *
-     * @param chatModel
-     * @param chatMemory
-     * @param vectorStore
-     * @return
+     * @param chatModel   DashScope ChatModel
+     * @param chatMemory  会话记忆管理器
+     * @param vectorStore 向量库（用于 RAG 检索）
+     * @return 配置好记忆 + RAG advisor 的 ChatClient
      */
     @Bean
     public ChatClient dashScopeChatRagClient(DashScopeChatModel chatModel, ChatMemory chatMemory, VectorStore vectorStore) {
@@ -151,7 +192,16 @@ public class ChatClientConfig {
     }
 
     /**
-     * 自定义 DeepSeekApi：关闭思考模式
+     * 自定义 DeepSeekApi 实例，关闭思考模式以降低成本。
+     * <p>
+     * 通过请求拦截器自动注入 {@code thinking: disabled} 参数（如果请求体中未显式设置），
+     * 并配置连接超时 20s、读取超时 120s（适配大模型慢响应）。
+     *
+     * @param apiKey            DeepSeek API Key
+     * @param baseUrl           DeepSeek API Base URL
+     * @param restClientBuilder RestClient 构建器（Spring 自动注入）
+     * @param objectMapper      JSON 序列化工具
+     * @return 配置好拦截器和超时的 DeepSeekApi 实例
      */
     @Bean
     @Primary

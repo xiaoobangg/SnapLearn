@@ -68,6 +68,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: "知识库" },
       },
       {
+        path: "documents",
+        name: "Documents",
+        component: () => import("@/pages/documents/DocumentManagePage.vue"),
+        meta: { title: "文档管理" },
+      },
+      {
         path: "logs",
         name: "Logs",
         component: () => import("@/pages/logs/AccessLogPage.vue"),

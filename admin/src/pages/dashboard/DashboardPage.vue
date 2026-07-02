@@ -173,29 +173,29 @@ const dailyStats = ref<any[]>([]);
 const reviewChartOption = computed(() => ({
   tooltip: { 
     trigger: "axis",
-    backgroundColor: "rgba(30, 41, 59, 0.95)",
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "#FFFFFF",
+    borderColor: "#E5E7EB",
     borderWidth: 1,
-    textStyle: { color: "#F8FAFC" }
+    textStyle: { color: "#1F2937" }
   },
   legend: { 
     data: ["复习数", "新用户", "新卡片组", "打卡人数"],
-    textStyle: { color: "#94A3B8" },
+    textStyle: { color: "#6B7280" },
     top: 0
   },
   grid: { left: "3%", right: "4%", bottom: "3%", top: "15%", containLabel: true },
   xAxis: { 
     type: "category", 
     data: dailyStats.value.map((d: any) => d.date.slice(5)),
-    axisLine: { lineStyle: { color: "rgba(255,255,255,0.1)" } },
-    axisLabel: { color: "#94A3B8" },
+    axisLine: { lineStyle: { color: "#E5E7EB" } },
+    axisLabel: { color: "#9CA3AF" },
     axisTick: { show: false }
   },
   yAxis: { 
     type: "value",
     axisLine: { show: false },
-    axisLabel: { color: "#94A3B8" },
-    splitLine: { lineStyle: { color: "rgba(255,255,255,0.05)" } }
+    axisLabel: { color: "#9CA3AF" },
+    splitLine: { lineStyle: { color: "#F3F4F6" } }
   },
   series: [
     {
@@ -252,24 +252,24 @@ const groupStatusChartOption = computed(() => ({
   tooltip: { 
     trigger: "item", 
     formatter: "{b}: {c} ({d}%)",
-    backgroundColor: "rgba(30, 41, 59, 0.95)",
-    borderColor: "rgba(255, 255, 255, 0.1)",
-    textStyle: { color: "#F8FAFC" }
+    backgroundColor: "#FFFFFF",
+    borderColor: "#E5E7EB",
+    textStyle: { color: "#1F2937" }
   },
   legend: { 
     bottom: 0,
-    textStyle: { color: "#94A3B8" }
+    textStyle: { color: "#6B7280" }
   },
   series: [{
     type: "pie",
     radius: ["50%", "75%"],
     avoidLabelOverlap: false,
     padAngle: 4,
-    itemStyle: { borderRadius: 12, borderColor: "#1E293B", borderWidth: 3 },
+    itemStyle: { borderRadius: 12, borderColor: "#FFFFFF", borderWidth: 3 },
     label: { 
       show: true, 
       formatter: "{b}\n{c}组",
-      color: "#F8FAFC",
+      color: "#1F2937",
       fontSize: 13,
       fontWeight: 500
     },
@@ -308,12 +308,12 @@ onMounted(async () => {
     gap: 18px;
     overflow: hidden;
     transition: all 0.3s ease;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid #E5E7EB;
     
     &:hover {
       transform: translateY(-4px);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-      border-color: rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      border-color: #D1D5DB;
     }
     
     &.stat-card-blue {
@@ -323,7 +323,7 @@ onMounted(async () => {
         background: linear-gradient(135deg, #6366F1, #4F46E5);
       }
       
-      .stat-num { color: #818CF8; }
+      .stat-num { color: #4D6BFE; }
       .stat-bg { background: radial-gradient(circle at 80% -20%, rgba(99, 102, 241, 0.3), transparent 60%); }
     }
     
@@ -334,7 +334,7 @@ onMounted(async () => {
         background: linear-gradient(135deg, #A78BFA, #8B5CF6);
       }
       
-      .stat-num { color: #A78BFA; }
+      .stat-num { color: #8B5CF6; }
       .stat-bg { background: radial-gradient(circle at 80% -20%, rgba(139, 92, 246, 0.3), transparent 60%); }
     }
     
@@ -345,7 +345,7 @@ onMounted(async () => {
         background: linear-gradient(135deg, #34D399, #10B981);
       }
       
-      .stat-num { color: #34D399; }
+      .stat-num { color: #10B981; }
       .stat-bg { background: radial-gradient(circle at 80% -20%, rgba(16, 185, 129, 0.3), transparent 60%); }
     }
     
@@ -356,7 +356,7 @@ onMounted(async () => {
         background: linear-gradient(135deg, #FBBF24, #F59E0B);
       }
       
-      .stat-num { color: #FBBF24; }
+      .stat-num { color: #F59E0B; }
       .stat-bg { background: radial-gradient(circle at 80% -20%, rgba(245, 158, 11, 0.3), transparent 60%); }
     }
     
@@ -392,12 +392,12 @@ onMounted(async () => {
     .stat-label {
       font-size: 14px;
       font-weight: 600;
-      color: #F8FAFC;
+      color: #1F2937;
     }
     
     .stat-sub {
       font-size: 12px;
-      color: #64748B;
+      color: #9CA3AF;
       margin-top: 2px;
     }
     
@@ -413,8 +413,8 @@ onMounted(async () => {
 }
 
 .chart-card {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
   
   .card-header {
     display: flex;
@@ -424,25 +424,25 @@ onMounted(async () => {
     .card-title {
       font-size: 15px;
       font-weight: 600;
-      color: #F8FAFC;
+      color: #1F2937;
     }
     
     .card-sub {
       font-size: 12px;
-      color: #64748B;
+      color: #9CA3AF;
     }
   }
 }
 
 .info-card {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
   
   .card-header {
     .card-title {
       font-size: 15px;
       font-weight: 600;
-      color: #F8FAFC;
+      color: #1F2937;
     }
   }
 }
@@ -458,12 +458,12 @@ onMounted(async () => {
   flex-direction: column;
   gap: 6px;
   padding: 16px;
-  background: rgba(15, 23, 42, 0.4);
+  background: #F9FAFB;
   border-radius: 12px;
   transition: all 0.2s ease;
   
   &:hover {
-    background: rgba(79, 70, 229, 0.1);
+    background: #F3F4F6;
   }
   
   &.info-item-highlight {
@@ -474,14 +474,14 @@ onMounted(async () => {
   
   .info-label {
     font-size: 13px;
-    color: #64748B;
+    color: #9CA3AF;
     font-weight: 500;
   }
   
   .info-value {
     font-size: 22px;
     font-weight: 700;
-    color: #F8FAFC;
+    color: #1F2937;
     letter-spacing: -0.5px;
     
     &.info-value-green {

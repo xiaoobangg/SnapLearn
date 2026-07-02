@@ -27,6 +27,17 @@ public class MemoryChatTools {
         return UserIdResolver.resolve(ctx);
     }
 
+    /**
+     * 保存用户个性化信息到长期记忆。
+     * <p>
+     * 通过 @Tool 注解暴露给 LLM，支持保存考试目标、英语水平、学习偏好等个性化配置。
+     * 内部委托 {@link AgentMemoryService#save} 执行实际存储，失败时吞异常不影响主链路。
+     *
+     * @param key         记忆键（如 exam_goal、english_level、learning_time）
+     * @param value       记忆值（如 考研英语一、CET-4、晚上有空）
+     * @param toolContext Spring AI 工具上下文，用于解析当前 userId
+     * @return 包含 success 和 key 的响应 Map
+     */
     @Tool(description = "保存用户的个性化信息到长期记忆中（考试目标、英语水平、学习偏好等）。")
     public Map<String, Object> saveMemory(
             @ToolParam(description = "记忆的键，如 exam_goal、english_level、learning_time") String key,
@@ -39,6 +50,16 @@ public class MemoryChatTools {
         return Map.of("success", true, "key", key);
     }
 
+    /**
+     * 从长期记忆中读取用户个性化信息。
+     * <p>
+     * 支持按 key 查询单条记忆，或不传 key 返回全部记忆列表。
+     * 内部委托 {@link AgentMemoryService#recall} 执行查询，失败时返回错误信息。
+     *
+     * @param key         记忆键（可选，留空则返回全部）
+     * @param toolContext Spring AI 工具上下文，用于解析当前 userId
+     * @return 单条记忆返回 {key, value}，全部记忆返回 {items, count}，失败返回 {error}
+     */
     @Tool(description = "从长期记忆中读取用户的个性化信息。传入 key 查某一条，不传或传空则返回全部。")
     public Map<String, Object> recallMemory(
             @ToolParam(description = "记忆的键，留空则返回全部记忆") String key,
@@ -51,6 +72,16 @@ public class MemoryChatTools {
         return result;
     }
 
+    /**
+     * 删除用户长期记忆中的某一条。
+     * <p>
+     * 通过 @Tool 注解暴露给 LLM，支持用户主动清除已失效的个性化配置。
+     * 内部委托 {@link AgentMemoryService#delete} 执行删除，失败时吞异常不影响主链路。
+     *
+     * @param key         要删除的记忆键
+     * @param toolContext Spring AI 工具上下文，用于解析当前 userId
+     * @return 包含 success 和 key 的响应 Map
+     */
     @Tool(description = "删除用户长期记忆中的某一条。")
     public Map<String, Object> deleteMemory(
             @ToolParam(description = "要删除的记忆的键") String key,

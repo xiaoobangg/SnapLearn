@@ -140,10 +140,10 @@ function handleResult(data: any) {
   align-items: center; 
   justify-content: space-between; 
   margin-bottom: 20px; 
-  h3 { 
-    font-size: 18px; 
+  h3 {
+    font-size: 18px;
     font-weight: 600;
-    color: #F8FAFC;
+    color: #1F2937;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -152,11 +152,11 @@ function handleResult(data: any) {
       content: "";
       width: 4px;
       height: 20px;
-      background: linear-gradient(180deg, #4F46E5, #06B6D4);
+      background: linear-gradient(180deg, #4D6BFE, #8B5CF6);
       border-radius: 2px;
     }
-  } 
+  }
 }
-.tip { font-size: 12px; color: #94A3B8; }
+.tip { font-size: 12px; color: #6B7280; }
 .result-box { margin-top: 20px; }
 </style>

@@ -1,18 +1,16 @@
 package com.snaplearn.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import org.springframework.transaction.annotation.Transactional;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.snaplearn.entity.KnowledgePoint;
-import com.snaplearn.entity.WordContent;
+import com.snaplearn.entity.*;
+import com.snaplearn.mapper.CardKpProgressMapper;
 import com.snaplearn.mapper.KnowledgePointMapper;
+import com.snaplearn.mapper.WordContentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -20,94 +18,106 @@ import java.util.UUID;
 public class KnowledgePointService {
 
     private final KnowledgePointMapper knowledgePointMapper;
-
-    private static final Map<String, String> TYPE_LABELS = Map.of(
-            "pronunciation", "音标",
-            "pos", "词性",
-            "general_meaning", "释义",
-            "extended_meaning", "语境含义",
-            "example_sentence", "例句",
-            "memory_tip", "记忆技巧"
-    );
+    private final CardKpProgressMapper cardKpProgressMapper;
+    private final WordContentMapper wordContentMapper;
 
     private static final List<String> POINT_ORDER = List.of(
             "pronunciation", "pos", "general_meaning", "extended_meaning",
             "example_sentence", "memory_tip"
     );
 
-    /**
-     * Generate knowledge points from word_content for a card
-     */
-    public List<KnowledgePoint> createForCard(String wordId, String cardId, WordContent wc) {
+    /** Ensure KP index rows exist for a word. Content read from WordContent via JOIN at query time. */
+    public List<KnowledgePoint> ensureForWord(String wordId) {
+        QueryWrapper<KnowledgePoint> qw = new QueryWrapper<>();
+        qw.eq("word_id", wordId);
+        List<KnowledgePoint> existing = knowledgePointMapper.selectList(qw);
+        if (!existing.isEmpty()) return existing;
+
         List<KnowledgePoint> points = new ArrayList<>();
         int order = 0;
         for (String type : POINT_ORDER) {
-            String content = getContentByType(wc, type);
-            if (content == null || content.isBlank()) continue;
-
             KnowledgePoint kp = new KnowledgePoint();
             kp.setId(UUID.randomUUID().toString());
             kp.setWordId(wordId);
-            kp.setCardId(cardId);
             kp.setPointType(type);
-            kp.setContent(content);
             kp.setSortOrder(order++);
-            kp.setStatus("unshown");
             knowledgePointMapper.insert(kp);
             points.add(kp);
         }
         return points;
     }
 
-    /**
-     * Get knowledge points for a card, ordered by sort_order
-     */
-    public List<KnowledgePoint> getByCardId(String cardId) {
+    /** Get KPs with content from WordContent and status from card_kp_progress */
+    public List<Map<String, Object>> getByCardIdWithProgress(String cardId, String wordId) {
+        QueryWrapper<WordContent> wcq = new QueryWrapper<>();
+        wcq.eq("word_id", wordId);
+        WordContent wc = wordContentMapper.selectOne(wcq);
         QueryWrapper<KnowledgePoint> qw = new QueryWrapper<>();
-        qw.eq("card_id", cardId).orderByAsc("sort_order");
-        return knowledgePointMapper.selectList(qw);
+        qw.eq("word_id", wordId).orderByAsc("sort_order");
+        List<KnowledgePoint> kps = knowledgePointMapper.selectList(qw);
+
+        QueryWrapper<CardKpProgress> pqw = new QueryWrapper<>();
+        pqw.eq("card_id", cardId);
+        Map<String, String> progressMap = new HashMap<>();
+        cardKpProgressMapper.selectList(pqw).forEach(p -> progressMap.put(p.getKpId(), p.getStatus()));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (KnowledgePoint kp : kps) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", kp.getId());
+            m.put("word_id", kp.getWordId());
+            m.put("point_type", kp.getPointType());
+            m.put("sort_order", kp.getSortOrder());
+            m.put("content", getContentByType(wc, kp.getPointType()));
+            m.put("status", progressMap.getOrDefault(kp.getId(), "unshown"));
+            result.add(m);
+        }
+        return result;
     }
 
-    /**
-     * Mark a knowledge point as shown
-     */
-    public void markShown(String pointId) {
-        UpdateWrapper<KnowledgePoint> uw = new UpdateWrapper<>();
-        uw.eq("id", pointId).set("status", "shown");
-        knowledgePointMapper.update(null, uw);
+    public void initProgressForCard(String cardId, String wordId) {
+        List<KnowledgePoint> kps = ensureForWord(wordId);
+        for (KnowledgePoint kp : kps) {
+            CardKpProgress p = new CardKpProgress();
+            p.setId(UUID.randomUUID().toString());
+            p.setCardId(cardId);
+            p.setKpId(kp.getId());
+            p.setStatus("unshown");
+            cardKpProgressMapper.insert(p);
+        }
     }
 
-    /**
-     * Mark a knowledge point as confirmed
-     */
-    public void markConfirmed(String pointId) {
-        UpdateWrapper<KnowledgePoint> uw = new UpdateWrapper<>();
-        uw.eq("id", pointId).set("status", "confirmed");
-        knowledgePointMapper.update(null, uw);
+    public void markShown(String kpId, String cardId) {
+        updateProgress(kpId, cardId, "shown");
     }
 
-    /**
-     * Reset all points for a card to unshown (for relearning)
-     */
+    public void markConfirmed(String kpId, String cardId) {
+        updateProgress(kpId, cardId, "confirmed");
+    }
+
+    private void updateProgress(String kpId, String cardId, String status) {
+        UpdateWrapper<CardKpProgress> uw = new UpdateWrapper<>();
+        uw.eq("kp_id", kpId).eq("card_id", cardId).set("status", status);
+        cardKpProgressMapper.update(null, uw);
+    }
+
     public void resetForCard(String cardId) {
-        UpdateWrapper<KnowledgePoint> uw = new UpdateWrapper<>();
+        UpdateWrapper<CardKpProgress> uw = new UpdateWrapper<>();
         uw.eq("card_id", cardId).set("status", "unshown");
-        knowledgePointMapper.update(null, uw);
+        cardKpProgressMapper.update(null, uw);
     }
 
-    /**
-     * Check if all points for a card are confirmed
-     */
     public boolean allConfirmed(String cardId) {
-        QueryWrapper<KnowledgePoint> qw = new QueryWrapper<>();
+        QueryWrapper<CardKpProgress> qw = new QueryWrapper<>();
         qw.eq("card_id", cardId);
-        long total = knowledgePointMapper.selectCount(qw);
+        long total = cardKpProgressMapper.selectCount(qw);
         qw.eq("status", "confirmed");
-        long confirmed = knowledgePointMapper.selectCount(qw);
+        long confirmed = cardKpProgressMapper.selectCount(qw);
         return total > 0 && total == confirmed;
     }
 
     private String getContentByType(WordContent wc, String type) {
+        if (wc == null) return "";
         return switch (type) {
             case "pronunciation" -> wc.getPronunciation();
             case "pos" -> wc.getPos();
@@ -115,7 +125,7 @@ public class KnowledgePointService {
             case "extended_meaning" -> wc.getExtendedMeaning();
             case "example_sentence" -> wc.getExampleSentence();
             case "memory_tip" -> wc.getMemoryTip();
-            default -> null;
+            default -> "";
         };
     }
 }

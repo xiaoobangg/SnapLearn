@@ -1,0 +1,62 @@
+// ===== Coze 风格浅色主题变量 =====
+$primary-color: #4D6BFE;          // Coze 紫蓝主色
+$primary-light: #EEF2FF;
+$primary-dark: #3B5BDB;
+
+$bg-gradient-start: #F7F8FA;      // 页面浅灰背景
+$bg-gradient-end: #F7F8FA;
+$sidebar-bg: #FFFFFF;             // 侧边栏纯白
+$sidebar-hover: #F3F4F6;
+$sidebar-active: #EEF2FF;
+
+$card-bg: #FFFFFF;
+$card-border: #E5E7EB;
+$card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+$card-shadow-hover: 0 4px 12px rgba(77, 107, 254, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+
+$text-primary: #1F2937;           // 深灰主文
+$text-secondary: #6B7280;         // 中灰次文
+$text-muted: #9CA3AF;             // 浅灰辅助文
+
+$accent-blue: #3B82F6;
+$accent-green: #10B981;
+$accent-yellow: #F59E0B;
+$accent-purple: #8B5CF6;
+$accent-red: #EF4444;
+
+$radius-sm: 8px;
+$radius-md: 10px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+
+$transition-fast: 0.15s ease;
+$transition-normal: 0.25s ease;
+$transition-slow: 0.35s ease;
+
+$font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+@mixin glass-effect {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid $card-border;
+}
+
+@mixin gradient-text {
+  background: linear-gradient(135deg, $primary-color, $accent-purple);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@mixin glow-effect($color: $primary-color) {
+  box-shadow: 0 0 0 3px rgba($color, 0.12);
+}
+
+@mixin hover-lift {
+  transition: transform $transition-normal, box-shadow $transition-normal;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $card-shadow-hover;
+  }
+}

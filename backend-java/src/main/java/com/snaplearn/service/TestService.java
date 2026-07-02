@@ -33,11 +33,13 @@ public class TestService {
 
     private final TestQuestionMapper testQuestionMapper;
     private final TestAttemptMapper testAttemptMapper;
+    private final TestSessionQuestionMapper sessionQuestionMapper;
     private final CardMapper cardMapper;
     private final CardGroupMapper cardGroupMapper;
     private final WordMapper wordMapper;
     private final WordContentMapper wordContentMapper;
     private final ErrorBookService errorBookService;
+    private final RandomTestService randomTestService;
     private final ObjectMapper objectMapper;
     private final ChatModel deepSeekChatModel;
     private final ChatModel dashScopeChatModel;
@@ -60,12 +62,21 @@ public class TestService {
             throw new BusinessException(404, "卡片组不存在");
         }
 
-        // 已有题目 → 直接返回
-        QueryWrapper<TestQuestion> existQw = new QueryWrapper<>();
-        existQw.eq("group_id", groupId).orderByAsc("sort_order");
-        List<TestQuestion> existing = testQuestionMapper.selectList(existQw);
-        if (!existing.isEmpty()) {
-            return Map.of("status", "ready", "questions", shuffleQuestionsAndOptions(existing), "total", existing.size());
+        // Get cards in this group → find word_ids → query existing questions
+        QueryWrapper<Card> cardQw = new QueryWrapper<>();
+        cardQw.eq("group_id", groupId);
+        List<String> wordIds = cardMapper.selectList(cardQw).stream()
+                .map(Card::getWordId).distinct().toList();
+
+        if (!wordIds.isEmpty()) {
+            QueryWrapper<TestQuestion> existQw = new QueryWrapper<>();
+            existQw.in("word_id", wordIds).orderByAsc("sort_order");
+            List<TestQuestion> existing = testQuestionMapper.selectList(existQw);
+            if (!existing.isEmpty()) {
+                // Record session if not already done
+                recordSessionIfNeeded(groupId, existing);
+                return Map.of("status", "ready", "questions", shuffleQuestionsAndOptions(existing), "total", existing.size());
+            }
         }
 
         // 正在生成中 → 返回 generating
@@ -90,9 +101,14 @@ public class TestService {
                 return Map.of("status", "generating");
             }
             // 可能被其他请求抢到并已完成
-            existing = testQuestionMapper.selectList(existQw);
-            if (!existing.isEmpty()) {
-                return Map.of("status", "ready", "questions", shuffleQuestionsAndOptions(existing), "total", existing.size());
+            if (!wordIds.isEmpty()) {
+                QueryWrapper<TestQuestion> existQw = new QueryWrapper<>();
+                existQw.in("word_id", wordIds).orderByAsc("sort_order");
+                List<TestQuestion> existing = testQuestionMapper.selectList(existQw);
+                if (!existing.isEmpty()) {
+                    recordSessionIfNeeded(groupId, existing);
+                    return Map.of("status", "ready", "questions", shuffleQuestionsAndOptions(existing), "total", existing.size());
+                }
             }
             throw new BusinessException(400, "当前状态不可测试");
         }
@@ -102,14 +118,10 @@ public class TestService {
         return Map.of("status", "generating");
     }
 
-    /** 后台 LLM 生成 → 插题 → 改状态 */
+    /** 后台 LLM 生成 → 插题 → 写 session_questions → 改状态 */
     private void generateAsync(String groupId) {
         try {
             log.info("[TEST-GEN] 开始后台生成 groupId={}", groupId);
-
-            QueryWrapper<TestQuestion> delQw = new QueryWrapper<>();
-            delQw.eq("group_id", groupId);
-            testQuestionMapper.delete(delQw);
 
             QueryWrapper<Card> cardQw = new QueryWrapper<>();
             cardQw.eq("group_id", groupId).orderByAsc("sort_order");
@@ -125,7 +137,8 @@ public class TestService {
             for (Card card : cards) {
                 Word word = wordMapper.selectById(card.getWordId());
                 if (word == null) continue;
-                WordContent wc = wordContentMapper.selectById(card.getWordId());
+                WordContent wc = wordContentMapper.selectOne(
+                        new QueryWrapper<WordContent>().eq("word_id", card.getWordId()));
                 for (String type : QUESTION_TYPES) {
                     cardDataList.add(new CardData(card, word, wc, type, order++));
                 }
@@ -133,12 +146,32 @@ public class TestService {
 
             List<CompletableFuture<TestQuestion>> futures = new ArrayList<>();
             for (CardData cd : cardDataList) {
-                futures.add(CompletableFuture.supplyAsync(() -> generateQuestion(cd.type, cd.card, cd.word, cd.wc, groupId, cd.order), TEST_LLM_EXECUTOR));
+                futures.add(CompletableFuture.supplyAsync(() -> generateQuestion(cd.type, cd.card, cd.word, cd.wc, cd.order), TEST_LLM_EXECUTOR));
             }
 
             List<TestQuestion> questions = futures.stream().map(CompletableFuture::join).collect(Collectors.toList());
             for (TestQuestion q : questions) {
                 testQuestionMapper.insert(q);
+            }
+
+            // Write session_questions and add to random test pool
+            for (CardData cd : cardDataList) {
+                for (TestQuestion q : questions) {
+                    if (q.getWordId().equals(cd.word.getId())) {
+                        TestSessionQuestion sq = new TestSessionQuestion();
+                        sq.setId(UUID.randomUUID().toString());
+                        sq.setGroupId(groupId);
+                        sq.setCardId(cd.card.getId());
+                        sq.setQuestionId(q.getId());
+                        sq.setSortOrder(cd.order);
+                        sessionQuestionMapper.insert(sq);
+                    }
+                }
+            }
+            // Add words to random test pool (auto, count=2)
+            String userId = cardGroupMapper.selectById(groupId).getUserId();
+            for (Card card : cards) {
+                randomTestService.onFirstGenerate(userId, card.getWordId());
             }
 
             CardGroup group = cardGroupMapper.selectById(groupId);
@@ -169,15 +202,13 @@ public class TestService {
         }
         String status = group.getGroupStatus();
         if ("testing".equals(status) || "test_done".equals(status)) {
-            QueryWrapper<TestQuestion> qw = new QueryWrapper<>();
-            qw.eq("group_id", groupId).orderByAsc("sort_order");
-            List<TestQuestion> questions = testQuestionMapper.selectList(qw);
+            List<TestQuestion> questions = getQuestionsForGroup(groupId);
             return Map.of("status", status, "questions", shuffleQuestionsAndOptions(questions), "total", questions.size());
         }
         return Map.of("status", status);
     }
 
-    private TestQuestion generateQuestion(String type, Card card, Word word, WordContent wc, String groupId, int order) {
+    private TestQuestion generateQuestion(String type, Card card, Word word, WordContent wc, int order) {
         String wordText = word.getWordText();
         String prompt = buildQuestionPrompt(type, wordText, wc);
         Exception lastException = null;
@@ -185,7 +216,7 @@ public class TestService {
 
         // DeepSeek 尝试 1 次（测验题长文本场景容易慢，不反复重试）
         try {
-            return doGenerateQuestion(currentClient, prompt, type, card, word, wc, groupId, order);
+            return doGenerateQuestion(currentClient, prompt, type, card, word, wc, order);
         } catch (Exception e) {
             log.warn("[DeepSeek] 生成题目失败，单词：{}，直接切换 DashScope 兜底", wordText);
         }
@@ -194,7 +225,7 @@ public class TestService {
         log.warn("切换至 DashScope(通义千问) 兜底生成，单词：{}", wordText);
         try {
             currentClient = ChatClient.builder(dashScopeChatModel).build();
-            return doGenerateQuestion(currentClient, prompt, type, card, word, wc, groupId, order);
+            return doGenerateQuestion(currentClient, prompt, type, card, word, wc, order);
         } catch (Exception e) {
             lastException = e;
             log.error("[{}] 兜底生成题目也失败，单词：{}", "DashScope", wordText, lastException);
@@ -205,7 +236,7 @@ public class TestService {
     /**
      * 执行单次题目生成 + JSON 解析 + 实体封装
      */
-    private TestQuestion doGenerateQuestion(ChatClient chatClient, String prompt, String type, Card card, Word word, WordContent wc, String groupId, int order) throws Exception {
+    private TestQuestion doGenerateQuestion(ChatClient chatClient, String prompt, String type, Card card, Word word, WordContent wc, int order) throws Exception {
         long start = System.currentTimeMillis();
         String wordText = word.getWordText();
         log.info("[TEST-LLM] PROMPT word={} type={}: {}", wordText, type, prompt);
@@ -233,8 +264,7 @@ public class TestService {
         // 封装返回实体
         TestQuestion question = new TestQuestion();
         question.setId(UUID.randomUUID().toString());
-        question.setGroupId(groupId);
-        question.setCardId(card.getId());
+        question.setWordId(word.getId());
         question.setQuestionType(type);
         question.setQuestionText(questionText);
         question.setOptions(node.path("options").toString());
@@ -266,9 +296,7 @@ public class TestService {
             throw new BusinessException(400, "当前状态不可重测");
         }
 
-        QueryWrapper<TestQuestion> qw = new QueryWrapper<>();
-        qw.eq("group_id", groupId).orderByAsc("sort_order");
-        return shuffleQuestionsAndOptions(testQuestionMapper.selectList(qw));
+        return shuffleQuestionsAndOptions(getQuestionsForGroup(groupId));
     }
 
     /**
@@ -334,8 +362,10 @@ public class TestService {
             if (isCorrect) {
                 correctCount++;
             } else {
-                errorCardIds.add(question.getCardId());
-                errorBookService.addError(groupId, question.getCardId(), userId, attempt.getId());
+                String cardId = getCardIdForQuestion(question.getId());
+                errorCardIds.add(cardId);
+                errorBookService.addError(groupId, cardId, userId, attempt.getId());
+                // Random test pool sync moved to frontend mark-wrong API
             }
         }
 
@@ -355,9 +385,7 @@ public class TestService {
     }
 
     public Map<String, Object> getResult(String groupId, String userId) {
-        QueryWrapper<TestQuestion> qw = new QueryWrapper<>();
-        qw.eq("group_id", groupId).orderByAsc("sort_order");
-        List<TestQuestion> questions = testQuestionMapper.selectList(qw);
+        List<TestQuestion> questions = getQuestionsForGroup(groupId);
 
         List<Map<String, Object>> items = new ArrayList<>();
         int correct = 0;
@@ -370,9 +398,10 @@ public class TestService {
                 correct++;
             }
 
-            Card card = cardMapper.selectById(q.getCardId());
+            String cardId = getCardIdForQuestion(q.getId());
+            Card card = cardMapper.selectById(cardId);
             Word word = card != null ? wordMapper.selectById(card.getWordId()) : null;
-            items.add(Map.of("question_id", q.getId(), "card_id", q.getCardId(), "word", word != null ? word.getWordText() : "", "type", q.getQuestionType(), "question", q.getQuestionText(), "options", q.getOptions(), "correct_answer", q.getCorrectAnswer(), "user_answer", att != null ? att.getUserAnswer() : "", "is_correct", ok));
+            items.add(Map.of("question_id", q.getId(), "card_id", cardId, "word", word != null ? word.getWordText() : "", "type", q.getQuestionType(), "question", q.getQuestionText(), "options", q.getOptions(), "correct_answer", q.getCorrectAnswer(), "user_answer", att != null ? att.getUserAnswer() : "", "is_correct", ok));
         }
 
         CardGroup group = cardGroupMapper.selectById(groupId);
@@ -402,6 +431,48 @@ public class TestService {
                     "durationMs", System.currentTimeMillis() - start,
                     "error", e.getClass().getSimpleName() + ": " + e.getMessage()
             );
+        }
+    }
+
+    private String getCardIdForQuestion(String questionId) {
+        QueryWrapper<TestSessionQuestion> qw = new QueryWrapper<>();
+        qw.eq("question_id", questionId);
+        TestSessionQuestion sq = sessionQuestionMapper.selectOne(qw);
+        return sq != null ? sq.getCardId() : "";
+    }
+
+    /** Get questions for a group by looking up word_ids from cards */
+    private List<TestQuestion> getQuestionsForGroup(String groupId) {
+        QueryWrapper<Card> cardQw = new QueryWrapper<>();
+        cardQw.eq("group_id", groupId);
+        List<String> wordIds = cardMapper.selectList(cardQw).stream()
+                .map(Card::getWordId).distinct().toList();
+        if (wordIds.isEmpty()) return List.of();
+        QueryWrapper<TestQuestion> qw = new QueryWrapper<>();
+        qw.in("word_id", wordIds).orderByAsc("sort_order");
+        return testQuestionMapper.selectList(qw);
+    }
+
+    /** Record session_questions linkage if not already recorded */
+    private void recordSessionIfNeeded(String groupId, List<TestQuestion> questions) {
+        QueryWrapper<TestSessionQuestion> sqw = new QueryWrapper<>();
+        sqw.eq("group_id", groupId);
+        if (sessionQuestionMapper.selectCount(sqw) > 0) return;
+        QueryWrapper<Card> cardQw = new QueryWrapper<>();
+        cardQw.eq("group_id", groupId);
+        List<Card> cards = cardMapper.selectList(cardQw);
+        for (Card card : cards) {
+            for (TestQuestion q : questions) {
+                if (q.getWordId().equals(card.getWordId())) {
+                    TestSessionQuestion sq = new TestSessionQuestion();
+                    sq.setId(UUID.randomUUID().toString());
+                    sq.setGroupId(groupId);
+                    sq.setCardId(card.getId());
+                    sq.setQuestionId(q.getId());
+                    sq.setSortOrder(q.getSortOrder());
+                    sessionQuestionMapper.insert(sq);
+                }
+            }
         }
     }
 

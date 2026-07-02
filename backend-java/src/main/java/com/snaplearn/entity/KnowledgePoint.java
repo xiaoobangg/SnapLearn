@@ -12,10 +12,7 @@ public class KnowledgePoint {
     @TableId
     private String id;
     private String wordId;
-    private String cardId;
     private String pointType;
-    private String content;
     private Integer sortOrder;
-    private String status;
     private LocalDateTime createdAt;
 }

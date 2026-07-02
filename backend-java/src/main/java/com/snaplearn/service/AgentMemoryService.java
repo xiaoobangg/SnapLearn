@@ -25,6 +25,16 @@ public class AgentMemoryService {
 
     private final AgentMemoryMapper mapper;
 
+    /**
+     * 保存或更新一条长期记忆。
+     * <p>
+     * 按 (userId, key) 唯一匹配：存在则更新 value，不存在则新建。
+     * 异常被吞掉仅 log.error，不影响调用方主链路。
+     *
+     * @param userId 用户 ID
+     * @param key    记忆键（如 exam_goal、english_level）
+     * @param value  记忆值
+     */
     public void save(String userId, String key, String value) {
         try {
             QueryWrapper<AgentMemory> qw = new QueryWrapper<>();
@@ -49,6 +59,16 @@ public class AgentMemoryService {
         }
     }
 
+    /**
+     * 读取长期记忆。
+     * <p>
+     * 传入 key 时返回单条 {key, value}；key 为空/null 时列出该用户全部记忆 {items, count}。
+     * 异常时返回 {error} 而非抛出，保证调用方主链路不受影响。
+     *
+     * @param userId 用户 ID
+     * @param key    记忆键（可选，为空则返回全部）
+     * @return 单条 {key, value} / 全部 {items, count} / 失败 {error}
+     */
     public Map<String, Object> recall(String userId, String key) {
         try {
             if (key != null && !key.isBlank()) {
@@ -76,6 +96,14 @@ public class AgentMemoryService {
         }
     }
 
+    /**
+     * 删除一条长期记忆。
+     * <p>
+     * 按 (userId, key) 精确删除。异常被吞掉仅 log.error。
+     *
+     * @param userId 用户 ID
+     * @param key    要删除的记忆键
+     */
     public void delete(String userId, String key) {
         try {
             QueryWrapper<AgentMemory> qw = new QueryWrapper<>();

@@ -30,7 +30,8 @@
       </view>
     </template>
     <view class="menu-list">
-      <view class="menu-item" @click="goCheckinCalendar"><text>📅 打卡日历</text><view class="menu-right"><text class="menu-badge" v-if="checkinStats.consecutive_days > 0">连续{{ checkinStats.consecutive_days }}天</text><text>›</text></view></view>
+      <view class="menu-item" @click="goCheckinShare"><text>📸 打卡分享</text><view class="menu-right"><text>›</text></view></view>
+<view class="menu-item" @click="goCheckinCalendar"><text>📅 打卡日历</text><view class="menu-right"><text class="menu-badge" v-if="checkinStats.consecutive_days > 0">连续{{ checkinStats.consecutive_days }}天</text><text>›</text></view></view>
       <!-- <view class="menu-item" @click="goAIChat"><text>🤖 AI 助手</text><text>›</text></view>-->
       <view class="menu-item" @click="goMasteredList"><text>📚 已掌握的卡片组</text><view class="menu-right"><text class="menu-badge" v-if="learnStats.testDone > 0">{{ learnStats.testDone }}</text><text>›</text></view></view>
       <view class="menu-item" @click="showAbout"><text>ℹ️ 关于拍立学</text><text>›</text></view>
@@ -108,6 +109,7 @@ function saveNickname() {
 }
 
 function goMasteredList() { showMastered.value = true; }
+function goCheckinShare() { uni.navigateTo({ url: "/pages/checkin-share/checkin-share" }); }
 function goCheckinCalendar() { uni.navigateTo({ url: "/pages/checkin-calendar/checkin-calendar" }); }
 function goAIChat() { uni.switchTab({ url: "/pages/chat/chat" }); }
 function goLogin() { uni.navigateTo({ url: "/pages/login/login" }); }

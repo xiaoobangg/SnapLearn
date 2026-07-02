@@ -94,3 +94,17 @@ export const voiceApi = {
   importEnrolled(data: any) { return http.post("/admin/voices/enroll/import", data); },
   deleteEnrolled(voiceCode: string) { return http.delete(`/admin/voices/enroll/${voiceCode}`); },
 };
+
+// ===== 文档管理 =====
+export const documentApi = {
+  list(params?: any) { return http.get("/admin/documents", { params }); },
+  get(id: string) { return http.get(`/admin/documents/${id}`); },
+  create(data: any) { return http.post("/admin/documents", data); },
+  update(id: string, data: any) { return http.put(`/admin/documents/${id}`, data); },
+  delete(id: string) { return http.delete(`/admin/documents/${id}`); },
+  publish(id: string) { return http.post(`/admin/documents/${id}/publish`); },
+  unpublish(id: string) { return http.post(`/admin/documents/${id}/unpublish`); },
+  importFiles(formData: FormData) { return http.post("/admin/documents/import", formData, { headers: { "Content-Type": "multipart/form-data" } }); },
+  batchPublish(ids: string[]) { return http.post("/admin/documents/batch-publish", { ids }); },
+  categories() { return http.get("/admin/documents/categories"); },
+};

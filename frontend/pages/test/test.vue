@@ -63,11 +63,16 @@ function startPolling() {
 function handleAnswer(qid:string, a:string) {
   answeredMap[qid] = a;
   const q = questions.value.find((q: any) => q.id === qid);
-  if (q && a === q.correct_answer) {
+  if (!q) return;
+  if (a === q.correct_answer) {
     questionStatus[qid] = "correct";
     setTimeout(() => { if (currentIndex.value < questions.value.length - 1) currentIndex.value++; }, 500);
+  } else if (q.question_type === 'spelling' && q.correct_answer.startsWith(a)) {
+    // 拼写题：当前输入是正确答案的前缀，还在构建中，不判错
+    return;
   } else {
     questionStatus[qid] = "wrong";
+    api.markWrong({ word_id: q.word_id, question_type: q.question_type }).catch(() => {});
   }
 }
 async function confirmAndClose() {

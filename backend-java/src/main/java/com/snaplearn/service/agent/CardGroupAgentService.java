@@ -31,6 +31,15 @@ public class CardGroupAgentService {
     private final ReactAgent dashScopeCardGroupAgent;
     private final ChatTraceService chatTraceService;
 
+    /**
+     * 同步执行 ReactAgent 对话。
+     * <p>
+     * 根据请求中的 model 字段选择 DeepSeek 或 DashScope Agent，构建包含候选词上下文的用户消息，
+     * 调用 Agent 的 call 方法执行工具调用流程（如创建卡片组），并记录 trace。
+     *
+     * @param req Agent 对话请求，包含 message、model、chatId、agentContext 等
+     * @return Agent 响应，包含 reply 文本、trace 步骤、pendingAction（如有）
+     */
     public AgentChatResponse runReactAgent(AgentChatRequest req) {
         ReactAgent agent = "dashscope".equalsIgnoreCase(req.model())
                 ? dashScopeCardGroupAgent

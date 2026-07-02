@@ -14,8 +14,8 @@
         :default-active="activeMenu"
         router
         background-color="transparent"
-        text-color="#94A3B8"
-        active-text-color="#fff"
+        text-color="#6B7280"
+        active-text-color="#4D6BFE"
         class="main-menu"
       >
         <el-menu-item index="/dashboard">
@@ -45,6 +45,10 @@
         <el-menu-item index="/knowledge">
           <el-icon><Notebook /></el-icon>
           <span>知识库</span>
+        </el-menu-item>
+        <el-menu-item index="/documents">
+          <el-icon><Document /></el-icon>
+          <span>文档管理</span>
         </el-menu-item>
         <el-menu-item index="/voices">
           <el-icon><Microphone /></el-icon>
@@ -154,6 +158,7 @@ const activeMenu = computed(() => {
   if (path.startsWith("/word-banks")) return "/word-banks";
   if (path.startsWith("/word-contents")) return "/word-contents";
   if (path.startsWith("/knowledge")) return "/knowledge";
+  if (path.startsWith("/documents")) return "/documents";
   if (path.startsWith("/chat-traces")) return "/chat-traces";
   if (path.startsWith("/chat")) return "/chat";
   if (path.startsWith("/voices")) return "/voices";
@@ -174,41 +179,19 @@ function handleCommand(cmd: string) {
 <style lang="scss" scoped>
 .layout {
   height: 100vh;
-  background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
+  background: #F7F8FA;
 }
 
 .aside {
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  background: #FFFFFF;
+  border-right: 1px solid #E5E7EB;
   overflow: hidden;
   position: relative;
-  
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(79, 70, 229, 0.5), transparent);
-  }
-  
-  &::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 1px;
-    height: 100%;
-    background: linear-gradient(180deg, rgba(79, 70, 229, 0.3), transparent);
-  }
 }
 
 .logo-wrapper {
-  padding: 24px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 20px 20px;
+  border-bottom: 1px solid #E5E7EB;
 }
 
 .logo {
@@ -216,118 +199,75 @@ function handleCommand(cmd: string) {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  
+
   .logo-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #4F46E5, #06B6D4);
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #4D6BFE, #8B5CF6);
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 8px;
-    box-shadow: 0 0 24px rgba(79, 70, 229, 0.4);
-    animation: logoPulse 3s ease-in-out infinite;
-    
+    box-shadow: 0 4px 12px rgba(77, 107, 254, 0.25);
+
     .el-icon {
-      font-size: 24px;
+      font-size: 22px;
       color: #fff;
     }
   }
-  
+
   .logo-text {
     font-size: 18px;
     font-weight: 700;
-    background: linear-gradient(135deg, #F8FAFC, #94A3B8);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #1F2937;
     letter-spacing: 1px;
   }
-  
+
   .logo-sub {
     font-size: 11px;
-    color: #64748B;
+    color: #9CA3AF;
     letter-spacing: 2px;
     margin-top: 2px;
   }
 }
 
-@keyframes logoPulse {
-  0%, 100% {
-    box-shadow: 0 0 24px rgba(79, 70, 229, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 36px rgba(79, 70, 229, 0.6), 0 0 60px rgba(6, 182, 212, 0.2);
-  }
-}
-
 .main-menu {
-  padding: 16px 8px;
-  
+  padding: 12px 8px;
+
   .el-menu-item {
-    margin: 6px 8px;
-    border-radius: 12px;
-    padding: 12px 16px;
-    transition: all 0.25s ease;
+    margin: 4px 8px;
+    border-radius: 8px;
+    padding: 10px 14px;
+    transition: all 0.2s ease;
     position: relative;
-    overflow: hidden;
-    
-    &::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 3px;
-      height: 0;
-      background: linear-gradient(180deg, #4F46E5, #06B6D4);
-      border-radius: 0 3px 3px 0;
-      transition: height 0.25s ease;
-    }
-    
+    color: #6B7280;
+
     &:hover {
-      background: rgba(79, 70, 229, 0.12);
-      color: #F8FAFC;
-      
+      background: #F3F4F6;
+      color: #1F2937;
+
       .el-icon {
-        color: #4F46E5;
-      }
-      
-      &::before {
-        height: 60%;
+        color: #4D6BFE;
       }
     }
-    
+
     &.is-active {
-      background: rgba(79, 70, 229, 0.2);
-      color: #fff;
-      
+      background: #EEF2FF;
+      color: #4D6BFE;
+      font-weight: 600;
+
       .el-icon {
-        color: #4F46E5;
-      }
-      
-      &::before {
-        height: 60%;
-      }
-      
-      &::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: radial-gradient(circle at 10% 50%, rgba(79, 70, 229, 0.15), transparent 60%);
+        color: #4D6BFE;
       }
     }
-    
+
     .el-icon {
       font-size: 18px;
       margin-right: 12px;
-      transition: color 0.25s ease;
+      transition: color 0.2s ease;
     }
-    
+
     span {
       font-size: 14px;
       font-weight: 500;
@@ -340,57 +280,56 @@ function handleCommand(cmd: string) {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  
+  padding: 14px 16px;
+  border-top: 1px solid #E5E7EB;
+  background: #FFFFFF;
+
   .version {
     text-align: center;
     font-size: 12px;
-    color: #64748B;
+    color: #9CA3AF;
     font-weight: 500;
   }
 }
 
 .header {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: #FFFFFF;
+  border-bottom: 1px solid #E5E7EB;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 28px;
-  height: 64px;
+  height: 60px;
 }
 
 .header-left {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  
+  gap: 2px;
+
   .page-title {
     font-size: 18px;
     font-weight: 700;
-    color: #F8FAFC;
-    letter-spacing: 0.5px;
+    color: #1F2937;
+    letter-spacing: 0.3px;
   }
-  
+
   .page-breadcrumb {
     display: flex;
     align-items: center;
     gap: 8px;
-    
+
     .breadcrumb-item {
       font-size: 12px;
-      color: #64748B;
-      
+      color: #9CA3AF;
+
       &.active {
-        color: #94A3B8;
+        color: #6B7280;
       }
     }
-    
+
     .breadcrumb-separator {
-      color: #64748B;
+      color: #9CA3AF;
       font-size: 12px;
     }
   }
@@ -412,10 +351,10 @@ function handleCommand(cmd: string) {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 5px 12px;
   border-radius: 20px;
   background: rgba(16, 185, 129, 0.1);
-  
+
   .status-dot {
     width: 6px;
     height: 6px;
@@ -423,10 +362,10 @@ function handleCommand(cmd: string) {
     background: #10B981;
     animation: statusBlink 2s ease-in-out infinite;
   }
-  
+
   .status-text {
     font-size: 12px;
-    color: #10B981;
+    color: #047857;
     font-weight: 500;
   }
 }
@@ -446,54 +385,56 @@ function handleCommand(cmd: string) {
   align-items: center;
   gap: 10px;
   padding: 6px 12px;
-  border-radius: 12px;
-  transition: background 0.25s ease;
-  
+  border-radius: 10px;
+  transition: background 0.2s ease;
+
   &:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: #F3F4F6;
   }
-  
+
   .user-avatar {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #4F46E5, #8B5CF6);
+    background: linear-gradient(135deg, #4D6BFE, #8B5CF6);
     display: flex;
     align-items: center;
     justify-content: center;
-    
+
     .el-icon {
-      font-size: 18px;
+      font-size: 16px;
       color: #fff;
     }
   }
-  
+
   .user-detail {
     display: flex;
     flex-direction: column;
     gap: 1px;
-    
+
     .user-name {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
-      color: #F8FAFC;
+      color: #1F2937;
     }
-    
+
     .user-role {
       font-size: 11px;
-      color: #64748B;
+      color: #9CA3AF;
     }
   }
-  
+
   .el-icon {
     font-size: 14px;
-    color: #94A3B8;
+    color: #9CA3AF;
   }
 }
 
 .main {
-  background: transparent;
+  background: #F7F8FA;
   padding: 24px;
   overflow-y: auto;
+  height: 0;
+  flex: 1;
 }
 </style>

@@ -55,6 +55,15 @@ public class CardGroupAgentTools {
         return UserIdResolver.resolve(ctx);
     }
 
+    /**
+     * 从文本中提取英文单词并去重。
+     * <p>
+     * 使用正则匹配英文单词（长度≥2），转小写后去重返回。
+     *
+     * @param text        包含英文单词的原始文本
+     * @param toolContext 工具上下文，用于解析 userId
+     * @return {words: 提取到的单词数组}
+     */
     @Tool(description = "从一段文本里提取英文单词列表，去重。输入是用户描述的原文，返回单词数组。")
     public Map<String, Object> extractWords(
             @ToolParam(description = "包含英文单词的原始文本") String text,
@@ -73,6 +82,15 @@ public class CardGroupAgentTools {
         return Map.of("words", new ArrayList<>(words));
     }
 
+    /**
+     * 检查用户已学过的单词。
+     * <p>
+     * 查询 snap_words 和 snap_cards 表，区分已学过和未学过的单词。
+     *
+     * @param words       要检查的英文单词列表
+     * @param toolContext 工具上下文，用于解析 userId
+     * @return {learned: 已学过的单词数组, newWords: 未学过的单词数组}
+     */
     @Tool(description = "查询用户已经学过哪些单词。输入是单词列表，返回 learned（已学过）和 newWords（未学过）两个数组。")
     public Map<String, Object> checkExistingWords(
             @ToolParam(description = "要检查的英文单词列表") List<String> words,
@@ -120,6 +138,16 @@ public class CardGroupAgentTools {
         }
     }
 
+    /**
+     * 基于种子词推荐相关词。
+     * <p>
+     * 调用 LLM 生成与种子词语义相关的单词，用于扩展卡片组内容。
+     *
+     * @param seedWords   种子单词数组
+     * @param n           希望推荐的数量（1-10）
+     * @param toolContext 工具上下文，用于解析 userId
+     * @return {recommendations: 推荐的单词数组}
+     */
     @Tool(description = "基于种子词推荐相关词。输入种子词数组和数量 n，返回 n 个语义相关的英文单词。")
     public Map<String, Object> recommendRelatedWords(
             @ToolParam(description = "种子单词数组") List<String> seedWords,
@@ -155,6 +183,16 @@ public class CardGroupAgentTools {
         }
     }
 
+    /**
+     * 创建卡片组。
+     * <p>
+     * 用户确认后调用，真正创建卡片组并返回结果。
+     *
+     * @param title       卡片组标题
+     * @param words       卡片组包含的英文单词数组
+     * @param toolContext 工具上下文，用于解析 userId
+     * @return {success, groupId, title, wordCount, message} 或 {error}
+     */
     @Tool(description = "创建卡片组。用户确认后调用，传入标题和单词数组，真正创建卡片组并返回结果。")
     public Map<String, Object> createCardGroup(
             @ToolParam(description = "卡片组标题") String title,
@@ -187,6 +225,14 @@ public class CardGroupAgentTools {
         }
     }
 
+    /**
+     * 撤销/删除当前用户最近一次创建的卡片组。
+     * <p>
+     * 当用户表达"撤销""删了""不要了"时调用。
+     *
+     * @param toolContext 工具上下文，用于解析 userId
+     * @return {success, groupId, title, message} 或 {error}
+     */
     @Tool(description = "撤销/删除当前用户最近一次创建的卡片组。当用户表达\"撤销\"\"删了\"\"不要了\"时调用。")
     public Map<String, Object> deleteLastCardGroup(ToolContext toolContext) {
         try {

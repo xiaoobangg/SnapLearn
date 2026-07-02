@@ -212,6 +212,8 @@ CREATE TABLE IF NOT EXISTS snap_word_banks (
 );
 CREATE INDEX IF NOT EXISTS idx_snap_wb_type ON snap_word_banks (type);
 CREATE INDEX IF NOT EXISTS idx_snap_wb_creator ON snap_word_banks (created_by);
+-- 随机测试打卡词库种子数据
+INSERT INTO snap_word_banks (id, name, type, description) VALUES ('random-test-bank', '随机测试', 'system', '随机测试自动生成的打卡记录') ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS snap_word_bank_items (
     id              VARCHAR(36)   PRIMARY KEY,
@@ -328,6 +330,50 @@ CREATE TABLE IF NOT EXISTS SPRING_AI_CHAT_MEMORY (
 );
 CREATE INDEX IF NOT EXISTS SPRING_AI_CHAT_MEMORY_CONVERSATION_ID_TIMESTAMP_IDX
     ON SPRING_AI_CHAT_MEMORY (conversation_id, "timestamp");
+
+-- ============================================================
+-- V14 资源复用新增表
+-- ============================================================
+CREATE TABLE IF NOT EXISTS snap_card_kp_progress (
+    id       VARCHAR(36)  PRIMARY KEY,
+    card_id  VARCHAR(36)  NOT NULL,
+    kp_id    VARCHAR(36)  NOT NULL,
+    status   VARCHAR(20)  DEFAULT 'unshown',
+    UNIQUE (card_id, kp_id)
+);
+
+CREATE TABLE IF NOT EXISTS snap_word_audios (
+    id           VARCHAR(36)  PRIMARY KEY,
+    word_id      VARCHAR(36)  NOT NULL,
+    voice_id     VARCHAR(36)  NOT NULL,
+    audio_type   VARCHAR(20)  NOT NULL,
+    audio_url    VARCHAR(500) NOT NULL,
+    duration_ms  INTEGER,
+    file_size    BIGINT,
+    created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (word_id, voice_id, audio_type)
+);
+
+CREATE TABLE IF NOT EXISTS snap_test_session_questions (
+    id           VARCHAR(36)  PRIMARY KEY,
+    group_id     VARCHAR(36)  NOT NULL,
+    card_id      VARCHAR(36)  NOT NULL,
+    question_id  VARCHAR(36)  NOT NULL,
+    sort_order   INT          DEFAULT 0,
+    created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS snap_random_test_pool (
+    id              VARCHAR(36)  PRIMARY KEY,
+    word_id         VARCHAR(36)  NOT NULL,
+    question_type   VARCHAR(30)  NOT NULL DEFAULT 'meaning_select',
+    user_id         VARCHAR(36)  NOT NULL,
+    review_count    INT          DEFAULT 2,
+    source          VARCHAR(20)  DEFAULT 'auto',
+    created_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (word_id, question_type, user_id)
+);
 
 
 CREATE EXTENSION IF NOT EXISTS vector;

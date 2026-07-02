@@ -18,11 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-/**
- * 统一音频接口：GET /api/v1/tts?text=xxx&cardId=xxx&type=xxx
- * <p>
- * 前端始终传 text + cardId + type；后端按用户音色偏好匹配缓存或实时生成。
- */
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
@@ -41,20 +36,23 @@ public class TtsController {
                                    @RequestParam(defaultValue = "") String cardId,
                                    @RequestParam(defaultValue = "") String type,
                                    @CurrentUser String userId) {
-        // 用户偏好音色，未设置则取系统默认
         String prefVoiceId = userSettingsService.getVoiceId(userId);
         Voice voice = voiceService.getEffectiveVoice(prefVoiceId);
 
-        // 有 cardId → 缓存优先
+        // 有 cardId → 解析 wordId → 缓存优先（按 word_id 复用音频）
         if (!cardId.isBlank() && !type.isBlank()) {
-            CardAudio cached = cardAudioService.findExisting(cardId, voice.getId(), type);
-            if (cached != null) {
-                return Map.of("audio_url", cached.getAudioUrl(), "cached", true);
-            }
+            Card card = cardMapper.selectById(cardId);
+            if (card != null) {
+                String wordId = card.getWordId();
+                WordAudio cached = cardAudioService.findExisting(wordId, voice.getId(), type);
+                if (cached != null) {
+                    return Map.of("audio_url", cached.getAudioUrl(), "cached", true);
+                }
 
-            CardAudio generated = generateForCard(cardId, type, voice, text);
-            if (generated != null) {
-                return Map.of("audio_url", generated.getAudioUrl(), "cached", false);
+                WordAudio generated = generateForWord(wordId, type, voice, text);
+                if (generated != null) {
+                    return Map.of("audio_url", generated.getAudioUrl(), "cached", false);
+                }
             }
         }
 
@@ -64,27 +62,24 @@ public class TtsController {
         return Map.of("audio_url", url);
     }
 
-    private CardAudio generateForCard(String cardId, String type, Voice voice, String fallbackText) {
+    private WordAudio generateForWord(String wordId, String type, Voice voice, String fallbackText) {
         try {
-            Card card = cardMapper.selectById(cardId);
-            if (card == null) return null;
-            Word word = wordMapper.selectById(card.getWordId());
+            Word word = wordMapper.selectById(wordId);
             WordContent wc = wordContentMapper.selectOne(
-                    new QueryWrapper<WordContent>().eq("word_id", card.getWordId()));
+                    new QueryWrapper<WordContent>().eq("word_id", wordId));
 
             String realText = switch (type) {
                 case "word" -> word != null ? word.getWordText() : fallbackText;
                 case "general_meaning" -> wc != null ? wc.getGeneralMeaning() : fallbackText;
                 case "extended_meaning" -> wc != null ? wc.getExtendedMeaning() : fallbackText;
-                case "example_sentence",
-                        "example" -> wc != null ? wc.getExampleSentence() : fallbackText;
+                case "example_sentence", "example" -> wc != null ? wc.getExampleSentence() : fallbackText;
                 case "memory_tip" -> wc != null ? wc.getMemoryTip() : fallbackText;
                 case "pronunciation" -> wc != null ? wc.getPronunciation() : fallbackText;
                 case "pos" -> wc != null ? wc.getPos() : fallbackText;
                 default -> fallbackText;
             };
             if (realText == null || realText.isBlank()) return null;
-            return cardAudioService.synthesize(cardId, voice, realText, type);
+            return cardAudioService.synthesize(wordId, voice, realText, type);
         } catch (Exception e) {
             return null;
         }

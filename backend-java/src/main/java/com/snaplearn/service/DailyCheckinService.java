@@ -183,17 +183,31 @@ public class DailyCheckinService {
      */
     public void logCheckin(String userId, String bankId, int newCount, int reviewCount,
                            int knownCount, int fuzzyCount, int unknownCount) {
-        DailyCheckinLog log = new DailyCheckinLog();
-        log.setId(UUID.randomUUID().toString());
-        log.setUserId(userId);
-        log.setBankId(bankId);
-        log.setCheckinDate(LocalDate.now());
-        log.setNewWordsCount(newCount);
-        log.setReviewWordsCount(reviewCount);
-        log.setKnownCount(knownCount);
-        log.setFuzzyCount(fuzzyCount);
-        log.setUnknownCount(unknownCount);
-        dailyCheckinLogMapper.insert(log);
+        LocalDate today = LocalDate.now();
+        // Upsert: update if today's record already exists
+        QueryWrapper<DailyCheckinLog> qw = new QueryWrapper<>();
+        qw.eq("user_id", userId).eq("bank_id", bankId).eq("checkin_date", today);
+        DailyCheckinLog existing = dailyCheckinLogMapper.selectOne(qw);
+        if (existing != null) {
+            existing.setNewWordsCount(existing.getNewWordsCount() + newCount);
+            existing.setReviewWordsCount(existing.getReviewWordsCount() + reviewCount);
+            existing.setKnownCount(existing.getKnownCount() + knownCount);
+            existing.setFuzzyCount(existing.getFuzzyCount() + fuzzyCount);
+            existing.setUnknownCount(existing.getUnknownCount() + unknownCount);
+            dailyCheckinLogMapper.updateById(existing);
+        } else {
+            DailyCheckinLog log = new DailyCheckinLog();
+            log.setId(UUID.randomUUID().toString());
+            log.setUserId(userId);
+            log.setBankId(bankId);
+            log.setCheckinDate(today);
+            log.setNewWordsCount(newCount);
+            log.setReviewWordsCount(reviewCount);
+            log.setKnownCount(knownCount);
+            log.setFuzzyCount(fuzzyCount);
+            log.setUnknownCount(unknownCount);
+            dailyCheckinLogMapper.insert(log);
+        }
     }
 
     /**

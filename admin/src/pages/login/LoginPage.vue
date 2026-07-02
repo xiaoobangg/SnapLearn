@@ -162,7 +162,7 @@ function skipChangePwd() {
   justify-content: center;
   position: relative;
   overflow: hidden;
-  background: #0F172A;
+  background: #F7F8FA;
 }
 
 .bg-effects {
@@ -180,23 +180,23 @@ function skipChangePwd() {
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
-    radial-gradient(ellipse at 20% 20%, rgba(79, 70, 229, 0.3) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(6, 182, 212, 0.2) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(77, 107, 254, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(59, 130, 246, 0.04) 0%, transparent 70%);
 }
 
 .orb {
   position: absolute;
   border-radius: 50%;
   filter: blur(80px);
-  opacity: 0.5;
+  opacity: 0.25;
   animation: orbFloat 15s ease-in-out infinite;
-  
+
   &.orb-1 {
     width: 400px;
     height: 400px;
-    background: linear-gradient(135deg, #4F46E5, #8B5CF6);
+    background: linear-gradient(135deg, #4D6BFE, #8B5CF6);
     top: -100px;
     left: -100px;
     animation-delay: 0s;
@@ -255,26 +255,23 @@ function skipChangePwd() {
 
 .login-card {
   width: 420px;
-  border-radius: 24px;
-  background: rgba(30, 41, 59, 0.85);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 25px 50px -12px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(79, 70, 229, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.08),
+    0 4px 8px rgba(0, 0, 0, 0.04);
   overflow: hidden;
   animation: cardAppear 0.6s ease-out;
-  
+
   &::before {
     content: "";
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(79, 70, 229, 0.5), rgba(6, 182, 212, 0.5), transparent);
+    height: 3px;
+    background: linear-gradient(90deg, #4D6BFE, #8B5CF6);
   }
 }
 
@@ -302,28 +299,28 @@ function skipChangePwd() {
 }
 
 .logo-circle {
-  width: 64px;
-  height: 64px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #4F46E5, #06B6D4);
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #4D6BFE, #8B5CF6);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 30px rgba(79, 70, 229, 0.5);
+  box-shadow: 0 8px 20px rgba(77, 107, 254, 0.25);
   animation: logoPulse 2s ease-in-out infinite;
-  
+
   .el-icon {
-    font-size: 32px;
+    font-size: 28px;
     color: #fff;
   }
 }
 
 @keyframes logoPulse {
   0%, 100% {
-    box-shadow: 0 0 30px rgba(79, 70, 229, 0.5);
+    box-shadow: 0 8px 20px rgba(77, 107, 254, 0.25);
   }
   50% {
-    box-shadow: 0 0 45px rgba(79, 70, 229, 0.7), 0 0 70px rgba(6, 182, 212, 0.3);
+    box-shadow: 0 12px 28px rgba(77, 107, 254, 0.35);
   }
 }
 
@@ -331,21 +328,18 @@ function skipChangePwd() {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  
+
   h1 {
     font-size: 24px;
     font-weight: 700;
-    background: linear-gradient(135deg, #F8FAFC, #94A3B8);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #1F2937;
     margin: 0;
     letter-spacing: 1px;
   }
-  
+
   p {
     font-size: 13px;
-    color: #64748B;
+    color: #6B7280;
     margin: 0;
   }
 }
@@ -366,32 +360,36 @@ function skipChangePwd() {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #94A3B8;
+  color: #4B5563;
   margin-bottom: 8px;
 }
 
 .form-input {
   .el-input__wrapper {
-    border-radius: 12px;
-    background: rgba(15, 23, 42, 0.6);
-    border-color: rgba(255, 255, 255, 0.08);
-    
+    border-radius: 10px;
+    background: #FFFFFF;
+    border-color: #E5E7EB;
+
     &:hover {
-      border-color: rgba(79, 70, 229, 0.3);
+      border-color: #D1D5DB;
     }
-    
+
     &.is-focus {
-      border-color: #4F46E5;
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+      border-color: #4D6BFE;
+      box-shadow: 0 0 0 3px rgba(77, 107, 254, 0.12);
     }
   }
-  
+
   .el-input__inner {
-    color: #F8FAFC;
+    color: #1F2937;
+
+    &::placeholder {
+      color: #9CA3AF;
+    }
   }
-  
+
   .el-input__prefix {
-    color: #64748B;
+    color: #9CA3AF;
   }
 }
 
@@ -402,28 +400,24 @@ function skipChangePwd() {
 .login-btn {
   width: 100%;
   height: 48px;
-  border-radius: 14px;
+  border-radius: 12px;
   font-size: 16px;
   font-weight: 600;
-  background: linear-gradient(135deg, #4F46E5, #3730A3);
+  background: #4D6BFE;
   border: none;
-  box-shadow: 
-    0 4px 15px rgba(79, 70, 229, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
-  
+  box-shadow: 0 4px 12px rgba(77, 107, 254, 0.25);
+  transition: all 0.25s ease;
+
   &:hover:not(:disabled) {
-    background: linear-gradient(135deg, #5B53D6, #3730A3);
-    box-shadow: 
-      0 6px 25px rgba(79, 70, 229, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: #3B5BDB;
+    box-shadow: 0 6px 16px rgba(77, 107, 254, 0.35);
     transform: translateY(-1px);
   }
-  
+
   &:active:not(:disabled) {
     transform: translateY(0);
   }
-  
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -433,10 +427,10 @@ function skipChangePwd() {
 .card-footer {
   padding: 16px 32px 24px;
   text-align: center;
-  
+
   .footer-text {
     font-size: 12px;
-    color: #64748B;
+    color: #9CA3AF;
     font-weight: 500;
   }
 }

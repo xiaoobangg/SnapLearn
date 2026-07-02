@@ -27,12 +27,12 @@
       <el-table-column prop="response_text" label="AI 回答" min-width="280" show-overflow-tooltip />
       <el-table-column prop="total_tokens" label="Token" min-width="80" align="center">
         <template #default="{ row }">
-          <span :style="{ color: row.total_tokens > 5000 ? '#FF6B6B' : '#CBD5E1' }">{{ row.total_tokens || '-' }}</span>
+          <span :style="{ color: row.total_tokens > 5000 ? '#DC2626' : '#6B7280' }">{{ row.total_tokens || '-' }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="duration_ms" label="耗时(ms)" min-width="100" align="center">
         <template #default="{ row }">
-          <span :style="{ color: row.duration_ms > 5000 ? '#FF6B6B' : '#CBD5E1' }">{{ row.duration_ms }}</span>
+          <span :style="{ color: row.duration_ms > 5000 ? '#DC2626' : '#6B7280' }">{{ row.duration_ms }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="status" label="状态" min-width="80" align="center">
@@ -168,14 +168,14 @@ onMounted(loadData);
 
 :deep(.el-table) {
   .el-table__body tr.el-table__row--striped td {
-    background: rgba(10, 15, 30, 0.92) !important;
-    color: #FFFFFF !important;
+    background: #F9FAFB !important;
+    color: #1F2937 !important;
   }
   .el-table__body tr td {
-    color: #FFFFFF !important;
+    color: #1F2937 !important;
   }
   .el-table__body tr:hover > td {
-    background: rgba(79, 70, 229, 0.2) !important;
+    background: #F9FAFB !important;
   }
 }
 
@@ -186,9 +186,9 @@ onMounted(loadData);
     gap: 16px;
     margin-bottom: 12px;
     font-size: 13px;
-    color: #CBD5E1;
+    color: #6B7280;
     padding-bottom: 8px;
-    border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+    border-bottom: 1px dashed #E5E7EB;
     > div { min-width: 140px; }
   }
   .block {
@@ -202,7 +202,7 @@ onMounted(loadData);
     .block-body {
       white-space: pre-wrap;
       word-break: break-all;
-      background: rgba(15, 23, 42, 0.9);
+      background: #F9FAFB;
       padding: 12px;
       border-radius: 8px;
       font-size: 13px;
@@ -210,7 +210,7 @@ onMounted(loadData);
       overflow: auto;
       margin: 0;
       font-family: inherit;
-      color: #FFFFFF;
+      color: #1F2937;
     }
     .block-error {
       background: rgba(239, 68, 68, 0.15);

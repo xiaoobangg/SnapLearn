@@ -46,11 +46,15 @@
         </el-form-item>
         <el-form-item label="引擎">
           <el-select v-model="form.provider" style="width:100%">
-            <el-option label="dashscope" value="dashscope" />
+            <el-option label="dashscope (DashScope)" value="dashscope" />
+            <el-option label="coze (Coze 工作流)" value="coze" />
           </el-select>
         </el-form-item>
-        <el-form-item label="音色标识">
-          <el-input v-model="form.voice_code" placeholder="如 longxiaochun_v3" />
+        <el-form-item :label="form.provider==='coze' ? '工作流ID' : '音色标识'">
+          <el-input v-model="form.voice_code" :placeholder="form.provider==='coze' ? 'Coze Workflow ID' : '如 longxiaochun_v3'" />
+        </el-form-item>
+        <el-form-item :label="form.provider==='coze' ? '空间ID' : 'TTS 模型'">
+          <el-input v-model="form.tts_model" :placeholder="form.provider==='coze' ? 'Coze Space ID' : '默认 cosyvoice-v3-plus'" />
         </el-form-item>
         <el-form-item label="音频格式">
           <el-select v-model="form.format" style="width:100%">
@@ -225,7 +229,7 @@ async function doImport() {
 // Form
 const formVisible = ref(false);
 const isEdit = ref(false);
-const form = ref<any>({ name: "", provider: "dashscope", voice_code: "", format: "mp3", sample_rate: 22050, volume: 50, speech_rate: 1.0, pitch: 1.0, instruction: "", description: "", is_active: true });
+const form = ref<any>({ name: "", provider: "dashscope", voice_code: "", tts_model: "", format: "mp3", sample_rate: 22050, volume: 50, speech_rate: 1.0, pitch: 1.0, instruction: "", description: "", is_active: true });
 const editId = ref("");
 
 // Test
@@ -247,7 +251,7 @@ async function loadData() {
 function openAdd() {
   isEdit.value = false;
   editId.value = "";
-  form.value = { name: "", provider: "dashscope", voice_code: "", format: "mp3", sample_rate: 22050, volume: 50, speech_rate: 1.0, pitch: 1.0, instruction: "", description: "", is_active: true };
+  form.value = { name: "", provider: "dashscope", voice_code: "", tts_model: "", format: "mp3", sample_rate: 22050, volume: 50, speech_rate: 1.0, pitch: 1.0, instruction: "", description: "", is_active: true };
   formVisible.value = true;
 }
 

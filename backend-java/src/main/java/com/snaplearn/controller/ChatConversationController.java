@@ -26,6 +26,9 @@ public class ChatConversationController {
     private final ChatMemory chatMemory;
     private final BaseCheckpointSaver saver;
 
+    /**
+     * 获取当前用户的会话列表，按创建时间倒序。
+     */
     @GetMapping("/conversations")
     public List<Map<String, Object>> listConversations(@CurrentUser String userId) {
         QueryWrapper<ChatConversation> qw = new QueryWrapper<>();
@@ -43,6 +46,9 @@ public class ChatConversationController {
         return result;
     }
 
+    /**
+     * 创建新会话，返回 chatId。
+     */
     @PostMapping("/conversations")
     public Map<String, Object> createConversation(@CurrentUser String userId) {
         String chatId = UUID.randomUUID().toString();
@@ -55,6 +61,9 @@ public class ChatConversationController {
         return Map.of("chat_id", chatId, "id", conv.getId());
     }
 
+    /**
+     * 删除会话，同时清除 ChatMemory 中的历史记录。
+     */
     @DeleteMapping("/conversations/{chatId}")
     public Map<String, Object> deleteConversation(@PathVariable String chatId, @CurrentUser String userId) {
         QueryWrapper<ChatConversation> qw = new QueryWrapper<>();
@@ -64,6 +73,9 @@ public class ChatConversationController {
         return Map.of("ok", true);
     }
 
+    /**
+     * 获取会话历史消息。mode=chat 从 Spring AI ChatMemory 读取，mode=agent 从 PostgresSaver checkpoint 读取。
+     */
     @GetMapping("/messages/{chatId}")
     public List<Map<String, Object>> getMessages(@PathVariable String chatId, @RequestParam(defaultValue = "chat") String mode) {
         if ("agent".equals(mode)) {

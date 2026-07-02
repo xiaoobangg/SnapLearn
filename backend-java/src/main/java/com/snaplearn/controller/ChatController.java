@@ -66,7 +66,8 @@ public class ChatController {
         }
 
         // Chat 模式：LLM 流式
-        return llmService.chatStream(message, model, chatId, userId)
+        String toolMode = stringOrDefault(body.get("tool_mode"), "");
+        return llmService.chatStream(message, model, chatId, userId, toolMode)
                 .map(content -> ServerSentEvent.builder(content).build());
     }
 
@@ -105,9 +106,13 @@ public class ChatController {
             return cardGroupAgentService.runReactAgent(req);
         }
         // 默认 chat 模式
-        return llmService.chatStr(message, model, chatId, userId);
+        String toolMode = stringOrDefault(body.get("tool_mode"), "");
+        return llmService.chatStr(message, model, chatId, userId, toolMode);
     }
 
+    /**
+     * 确保会话记录存在：若 chatId 对应当前用户无记录则新建，标题取消息前 30 字。
+     */
     private void ensureConversation(String userId, String chatId, String message) {
         QueryWrapper<ChatConversation> qw = new QueryWrapper<>();
         qw.eq("user_id", userId).eq("chat_id", chatId);

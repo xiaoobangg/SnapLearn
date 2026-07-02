@@ -46,6 +46,17 @@
         </view>
       </view>
 
+      <view class="action-card chat-entry" @click="goRandomTest" hover-class="card-hover">
+        <view class="ce-icon-wrap">
+          <text class="ce-icon">&#x1F3B2;</text>
+        </view>
+        <view class="ce-text">
+          <text class="ce-title">随机测验</text>
+          <text class="ce-desc">随机出题，挑战自我</text>
+        </view>
+        <text class="primary-arrow">&#x27A1;</text>
+      </view>
+
       <view class="action-card chat-entry" @click="goAIChat" hover-class="card-hover">
         <view class="ce-icon-wrap">
           <text class="ce-icon">&#x1F916;</text>
@@ -204,6 +215,7 @@
   }
   function goCheckin() { uni.navigateTo({ url: "/pages/checkin/checkin" }); }
   function goNotebook() { uni.switchTab({ url: "/pages/notebook/notebook" }); }
+  function goRandomTest() { uni.navigateTo({ url: "/pages/random-test/random-test" }); }
   function goAIChat() { uni.switchTab({ url: "/pages/chat/chat" }); }
   function goCardDetail(group : any) { uni.navigateTo({ url: `/pages/card-detail/card-detail?groupId=${group.id}` }); }
   function goTest(group : any) {

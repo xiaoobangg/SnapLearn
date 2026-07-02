@@ -137,5 +137,5 @@ async function handleChangePwd() {
 </script>
 
 <style lang="scss" scoped>
-h4 { font-size: 14px; font-weight: 600; color: #94A3B8; }
+h4 { font-size: 14px; font-weight: 600; color: #6B7280; }
 </style>

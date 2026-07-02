@@ -13,12 +13,11 @@ import java.time.LocalDateTime;
 public class TestQuestion {
     @TableId
     private String id;
-    private String groupId;
-    private String cardId;
+    private String wordId;
     private String questionType;
     private String questionText;
     @TableField(typeHandler = JsonbTypeHandler.class)
-    private String options; // JSON string → PostgreSQL jsonb
+    private String options; // JSON string -> PostgreSQL jsonb
     private String correctAnswer;
     private Integer sortOrder;
     private LocalDateTime createdAt;

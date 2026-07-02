@@ -76,8 +76,9 @@ public class CardGroupService {
             card.setCardStatus("unlearned");
             cardMapper.insert(card);
 
-            // Create knowledge points from word_content
-            knowledgePointService.createForCard(word.getId(), cardId, wc);
+            // Ensure KP index rows exist for this word, then init progress for this card
+            knowledgePointService.ensureForWord(word.getId());
+            knowledgePointService.initProgressForCard(cardId, word.getId());
 
             cardResponses.add(new CardResponse(
                     cardId, word.getWordText(),
@@ -86,14 +87,15 @@ public class CardGroupService {
                     wc.getPos(), wc.getPronunciation(), ""
             ));
 
-            // 收集所有知识点文本用于异步音频预生成
-            addAudioItem(audioItems, cardId, "word", word.getWordText());
-            addAudioItem(audioItems, cardId, "general_meaning", wc.getGeneralMeaning());
-            addAudioItem(audioItems, cardId, "extended_meaning", wc.getExtendedMeaning());
-            addAudioItem(audioItems, cardId, "example", wc.getExampleSentence());
-            addAudioItem(audioItems, cardId, "memory_tip", wc.getMemoryTip());
-            addAudioItem(audioItems, cardId, "pronunciation", wc.getPronunciation());
-            addAudioItem(audioItems, cardId, "pos", wc.getPos());
+            // 收集所有知识点文本用于异步音频预生成（按 word_id 复用）
+            String wid = word.getId();
+            addAudioItem(audioItems, wid, "word", word.getWordText());
+            addAudioItem(audioItems, wid, "general_meaning", wc.getGeneralMeaning());
+            addAudioItem(audioItems, wid, "extended_meaning", wc.getExtendedMeaning());
+            addAudioItem(audioItems, wid, "example", wc.getExampleSentence());
+            addAudioItem(audioItems, wid, "memory_tip", wc.getMemoryTip());
+            addAudioItem(audioItems, wid, "pronunciation", wc.getPronunciation());
+            addAudioItem(audioItems, wid, "pos", wc.getPos());
         }
 
         // 异步预生成单词 + 例句语音（不阻塞卡片组创建）
@@ -252,13 +254,15 @@ public class CardGroupService {
             Word word = wordMap.get(c.getWordId());
             WordContent wc = contentMap.get(c.getWordId());
 
-            // Fetch knowledge points for this card
-            List<KnowledgePoint> kps = knowledgePointService.getByCardId(c.getId());
+            // Fetch knowledge points with progress for this card
+            List<Map<String, Object>> kpMaps = knowledgePointService.getByCardIdWithProgress(c.getId(), c.getWordId());
             List<KnowledgePointResponse> kpResps = new ArrayList<>();
-            for (KnowledgePoint kp : kps) {
+            for (Map<String, Object> kp : kpMaps) {
                 kpResps.add(new KnowledgePointResponse(
-                        kp.getId(), kp.getPointType(), kp.getContent(),
-                        kp.getStatus(), kp.getSortOrder()
+                        (String) kp.get("id"), (String) kp.get("point_type"),
+                        (String) kp.get("content"),
+                        (String) kp.get("status"),
+                        (Integer) kp.get("sort_order")
                 ));
             }
 
@@ -352,10 +356,10 @@ public class CardGroupService {
         return Map.of("ok", true, "target_group_id", destGroupId);
     }
 
-    private void addAudioItem(List<Map<String, String>> items, String cardId, String type, String text) {
+    private void addAudioItem(List<Map<String, String>> items, String wordId, String type, String text) {
         if (text != null && !text.isBlank()) {
             Map<String, String> item = new HashMap<>();
-            item.put("cardId", cardId);
+            item.put("wordId", wordId);
             item.put("type", type);
             item.put("text", text);
             items.add(item);

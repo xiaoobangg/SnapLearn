@@ -166,7 +166,9 @@ public class AdminVoiceController {
                 // ===== 新闻播报 =====
                 Map.of("model","cosyvoice-v3-flash","name","龙硕（博才干练男）","voice_code","longshuo_v3","language","中文/英文","features","SSML/时间戳"),
                 Map.of("model","cosyvoice-v3-flash","name","龙书（沉稳青年男）","voice_code","longshu_v3","language","中文/英文","features","SSML/时间戳"),
-                Map.of("model","cosyvoice-v3-flash","name","Bella3.0（精准干练女）","voice_code","loongbella_v3","language","中文/英文","features","SSML/时间戳")
+                Map.of("model","cosyvoice-v3-flash","name","Bella3.0（精准干练女）","voice_code","loongbella_v3","language","中文/英文","features","SSML/时间戳"),
+                // ===== Coze 工作流语音 =====
+                Map.of("provider","coze","model","7617096083353337891","name","Coze 工作流语音","voice_code","7657756589499334692","language","中文/英文","features","Coze 工作流")
         );
     }
 
@@ -177,7 +179,7 @@ public class AdminVoiceController {
         for (Map<String, String> v : voices) {
             Voice voice = new Voice();
             voice.setName(v.get("name"));
-            voice.setProvider("dashscope");
+            voice.setProvider(v.getOrDefault("provider", "dashscope"));
             voice.setVoiceCode(v.get("voice_code"));
             voice.setTtsModel(v.getOrDefault("model", "cosyvoice-v3-plus"));
             voice.setDescription(v.get("language"));

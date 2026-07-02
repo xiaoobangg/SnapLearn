@@ -109,6 +109,17 @@ export const api = {
     return request({ url: `/test/groups/${groupId}/status` });
   },
 
+  // ===== 随机测试 =====
+  startRandomTest(count?: number): Promise<{ ok: boolean; questions: TestQuestion[]; total: number; word_ids: string[]; message?: string }> {
+    return request({ url: "/random-test/start", method: "POST", data: count ? { count } : {} });
+  },
+  submitRandomTest(data: { question_ids: string[]; user_answers: string[] }): Promise<{ total: number; correct: number; all_correct: boolean }> {
+    return request({ url: "/random-test/submit", method: "POST", data });
+  },
+  markWrong(data: { word_id: string; question_type: string }): Promise<{ ok: boolean }> {
+    return request({ url: "/random-test/mark-wrong", method: "POST", data });
+  },
+
   // ===== 每日打卡 =====
   getTodayCheckin(bankId: string): Promise<{
     bank_id: string; bank_name: string;

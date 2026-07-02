@@ -87,6 +87,9 @@ app:
       secret: ${ADMIN_JWT_SECRET}
       expire-minutes: ${ADMIN_JWT_EXPIRE_MINUTES:1440}
   debug: ${DEBUG:true}
+  coze:
+    api:
+      token: ${COZE_API_TOKEN}
 
 logging:
   file:

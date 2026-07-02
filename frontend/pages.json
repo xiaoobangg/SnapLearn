@@ -8,7 +8,9 @@
     { "path": "pages/card-detail/card-detail", "style": { "navigationBarTitleText": "学习卡片" } },
     { "path": "pages/checkin/checkin", "style": { "navigationBarTitleText": "每日打卡" } },
     { "path": "pages/test/test", "style": { "navigationBarTitleText": "测验" } },
+    { "path": "pages/random-test/random-test", "style": { "navigationBarTitleText": "随机测验" } },
     { "path": "pages/checkin-calendar/checkin-calendar", "style": { "navigationBarTitleText": "打卡日历" } },
+    { "path": "pages/checkin-share/checkin-share", "style": { "navigationBarTitleText": "打卡分享" } },
     { "path": "pages/chat/chat", "style": { "navigationBarTitleText": "AI 助手" } },
     { "path": "pages/review/review", "style": { "navigationBarTitleText": "复习", "navigationStyle": "custom" } },
     { "path": "pages/login/login", "style": { "navigationBarTitleText": "登录" } }

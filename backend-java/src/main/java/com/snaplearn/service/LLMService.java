@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.snaplearn.common.exception.BusinessException;
 import com.snaplearn.service.advisor.ChatTraceLoggingAdvisor;
+import com.snaplearn.service.agent.DocumentChatTools;
 import com.snaplearn.service.agent.MemoryChatTools;
 import com.snaplearn.util.PromptLoader;
 import lombok.extern.slf4j.Slf4j;
@@ -64,6 +65,7 @@ public class LLMService {
     private final VectorStore vectorStore;
     private final ChatTraceService chatTraceService;
     private final MemoryChatTools memoryChatTools;
+    private final DocumentChatTools documentChatTools;
 
     /**
      * 与 userId 无关的 RAG 组件，构造期一次性建好——避免每次请求重建 ChatClient / 重新解析 PromptTemplate
@@ -73,7 +75,7 @@ public class LLMService {
     private final MultiQueryExpander multiQueryExpander;
     private final ContextualQueryAugmenter contextualQueryAugmenter;
 
-    public LLMService(ObjectMapper objectMapper, ChatClient deepSeekChatClient, ChatClient dashScopeChatClient, PromptLoader promptLoader, ChatModel deepSeekChatModel, ChatModel dashScopeChatModel, VectorStore vectorStore, ChatTraceService chatTraceService, MemoryChatTools memoryChatTools) {
+    public LLMService(ObjectMapper objectMapper, ChatClient deepSeekChatClient, ChatClient dashScopeChatClient, PromptLoader promptLoader, ChatModel deepSeekChatModel, ChatModel dashScopeChatModel, VectorStore vectorStore, ChatTraceService chatTraceService, MemoryChatTools memoryChatTools, DocumentChatTools documentChatTools) {
         this.objectMapper = objectMapper;
         this.deepSeekChatClient = deepSeekChatClient;
         this.dashScopeChatClient = dashScopeChatClient;
@@ -83,6 +85,7 @@ public class LLMService {
         this.vectorStore = vectorStore;
         this.chatTraceService = chatTraceService;
         this.memoryChatTools = memoryChatTools;
+        this.documentChatTools = documentChatTools;
 
         // 一次性构建 RAG 流水线里所有"用户无关"的组件，请求路径只重建 retriever
         this.conditionalCompression = onlyWhenMultiTurn(buildCompressionTransformer(), COMPRESSION_MIN_ROUNDS);
@@ -91,6 +94,17 @@ public class LLMService {
         this.contextualQueryAugmenter = buildEmptyContextRejectingAugmenter();
     }
 
+    /**
+     * 批量生成单词卡片内容（调用 DeepSeek LLM）。
+     * <p>
+     * 根据单词列表和可选上下文，生成结构化卡片内容：general_meaning、extended_meaning、
+     * example_sentence、memory_tip、pos、pronunciation。
+     *
+     * @param words   单词列表
+     * @param context 可选上下文（如用户拍照原文），用于生成更贴切的释义和例句
+     * @return 与入参顺序一致的卡片内容列表
+     * @throws BusinessException LLM 返回为空或服务异常时抛出
+     */
     public List<CardContent> generateBatchCardContent(List<String> words, String context) {
         if (words.isEmpty()) {
             return List.of();
@@ -166,7 +180,13 @@ public class LLMService {
 
     /**
      * 临时对话：直接用 ChatModel，不走 tools / RAG / memory / trace。
-     * 适用场景：OCR 单词提取、简单文本处理等一次性 LLM 调用。
+     * <p>
+     * 适用场景：OCR 单词提取、简单文本处理等一次性 LLM 调用，不需要会话记忆和知识库。
+     *
+     * @param message 用户消息
+     * @param model   模型选择：deepseek / dashscope
+     * @return LLM 响应文本
+     * @throws BusinessException LLM 返回为空或服务异常时抛出
      */
     public String chatSimple(String message, String model) {
         try {
@@ -186,28 +206,67 @@ public class LLMService {
         }
     }
 
-    public Flux<String> chatStream(String message, String model, String chatId, String userId) {
-        return selectClient(model).prompt()
+    /**
+     * 流式对话（完整版，支持指定 toolMode）。
+     * <p>
+     * 自动加载/保存会话记忆 → 挂载 {@link ChatTraceLoggingAdvisor} 持久化 trace → 挂载按 userId 隔离的
+     * RAG advisor（知识库召回）。当 {@code toolMode="document"} 时额外挂载 documentChatTools。
+     *
+     * @param message  用户消息
+     * @param model    模型选择：deepseek / dashscope
+     * @param chatId   会话 ID
+     * @param userId   当前用户 ID
+     * @param toolMode 工具模式：传 "document" 启用文档工具，其他值/null 不启用
+     * @return SSE 流式响应
+     */
+    public Flux<String> chatStream(String message, String model, String chatId, String userId, String toolMode) {
+        var prompt = selectClient(model).prompt()
                 .tools(memoryChatTools)
                 .toolContext(Map.of("userId", userId))
                 .advisors(a -> a.param("chat_memory_conversation_id", chatId))
                 .advisors(new ChatTraceLoggingAdvisor(userId, chatId, model, chatTraceService))
-                .advisors(getRetrievalAugmentationAdvisor(userId))
-                .user(message)
-                .stream()
-                .content();
+                .advisors(getRetrievalAugmentationAdvisor(userId));
+        if ("document".equals(toolMode)) {
+            prompt.tools(memoryChatTools, documentChatTools);
+        }
+        return prompt.user(message).stream().content();
     }
 
+    /**
+     * 同步对话（不指定 toolMode，默认不挂载文档工具）。
+     *
+     * @param message 用户消息
+     * @param model   模型选择：deepseek / dashscope
+     * @param chatId  会话 ID，用于加载历史记忆
+     * @param userId  当前用户 ID，用于 RAG 按用户隔离召回
+     * @return LLM 完整响应文本
+     */
     public String chatStr(String message, String model, String chatId, String userId) {
-        return selectClient(model).prompt()
+        return chatStr(message, model, chatId, userId, null);
+    }
+
+    /**
+     * 同步对话（完整版，支持指定 toolMode）。
+     * <p>
+     *
+     * @param message  用户消息
+     * @param model    模型选择：deepseek / dashscope
+     * @param chatId   会话 ID
+     * @param userId   当前用户 ID
+     * @param toolMode 工具模式：传 "document" 启用文档工具，其他值/null 不启用
+     * @return LLM 完整响应文本
+     */
+    public String chatStr(String message, String model, String chatId, String userId, String toolMode) {
+        var prompt = selectClient(model).prompt()
                 .tools(memoryChatTools)
                 .toolContext(Map.of("userId", userId))
                 .advisors(a -> a.param("chat_memory_conversation_id", chatId))
                 .advisors(new ChatTraceLoggingAdvisor(userId, chatId, model, chatTraceService))
-                .advisors(getRetrievalAugmentationAdvisor(userId))
-                .user(message)
-                .call()
-                .content();
+                .advisors(getRetrievalAugmentationAdvisor(userId));
+        if ("document".equals(toolMode)) {
+            prompt.tools(memoryChatTools, documentChatTools);
+        }
+        return prompt.user(message).call().content();
     }
 
     /**
