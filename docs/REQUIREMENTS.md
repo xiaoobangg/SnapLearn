@@ -392,8 +392,21 @@ voices                    ← 音色配置
   sample_rate, volume, speech_rate, pitch, instruction,
   is_default, is_active, created_at
 
-card_audios               ← 卡片音频缓存
-  id, card_id, voice_id, audio_type, audio_url, created_at
+word_audios               ← 单词音频缓存（v2 资源复用，word_id 替代 card_id）
+  id, word_id, voice_id, audio_type, audio_url, duration_ms, file_size, created_at
+
+card_kp_progress          ← 卡片知识点学习进度（v2 资源复用）
+  id, card_id, kp_id, status(unshown/shown/confirmed)
+
+test_session_questions    ← 测次关联（v2 资源复用，group_id + card_id → question_id）
+  id, group_id, card_id, question_id, sort_order, created_at
+
+random_test_pool          ← 随机测试池（v2 资源复用，review_count 计数）
+  id, word_id, question_type, user_id, review_count, source, created_at, updated_at
+
+documents                 ← 文档管理（Markdown 编辑/发布/向量化）
+  id, user_id, title, content, category, tags, status(draft/published/archived),
+  source_type, source_name, file_size, sort_order, knowledge_file_id, created_at, updated_at
 
 agent_memories            ← 长期记忆
   id, user_id, memory_key, memory_value, created_at, updated_at
@@ -957,3 +970,114 @@ created_at      TIMESTAMP
 3. **前缀展示**：列表只显示前 8 位前缀，便于用户识别
 4. **使用追踪**：记录 `last_used_at`，便于审计和清理过期 Key
 5. **快速撤销**：支持即时禁用，无需等待 token 过期
+
+---
+
+## 十五、文档管理模块
+
+### 模块概述
+
+在管理端统一管理所有 MD 文档，支持在线编辑、批量导入、发布到向量库（RAG 知识库），并提供独立的 AI 对话入口。
+
+### 功能清单
+
+| 需求 | 说明 | 优先级 |
+|------|------|--------|
+| 文档列表 | 表格展示，支持按标题搜索、分类/状态筛选、分页 | P0 |
+| 在线编辑 | Markdown 编辑器，左侧编辑、右侧实时预览 | P0 |
+| 批量导入 | 选择本地 .md 文件上传，文件名作为标题，内容写入 content | P1 |
+| 发布到向量库 | 将 MD 内容向量化到 vector_store，关联 snap_knowledge_files | P0 |
+| 撤销发布 | 删除向量库切片，保留文档原稿 | P0 |
+| 删除文档 | 已发布先撤销，再删除 snap_documents 行 | P0 |
+| 分类管理 | 支持自定义分类，按分类筛选 | P1 |
+| 标签管理 | 逗号分隔标签，支持搜索 | P1 |
+| 文档 AI 助手 | 独立 AI 对话入口，支持 RAG 检索 + Tool 调用（搜索/创建/修改文档） | P1 |
+
+### 数据结构
+
+`snap_documents` 表：见 [八、数据结构设计](#八数据结构设计核心变更)。
+
+### 数据流
+
+```
+管理端编辑器 → snap_documents（Markdown 原稿，status=draft）
+                   ↓ 发布
+         KnowledgeVectorService 解析 → 切片 → 向量化
+                   ↓
+         snap_knowledge_files + vector_store
+                   ↓
+         snap_documents.status = 'published'
+```
+
+### 状态流转
+
+```
+draft → published → archived
+  ↑         │
+  └─────────┘ (撤销发布)
+```
+
+| status | 含义 |
+|--------|------|
+| draft | 草稿（可编辑） |
+| published | 已发布（向量库已更新，修改需先撤销） |
+| archived | 已归档（只读，不可编辑） |
+
+### API
+
+| 端点 | 说明 |
+|------|------|
+| `GET /api/v1/admin/documents` | 文档列表（搜索/分类/状态筛选） |
+| `GET /api/v1/admin/documents/{id}` | 文档详情 |
+| `POST /api/v1/admin/documents` | 创建文档 |
+| `PUT /api/v1/admin/documents/{id}` | 更新文档 |
+| `DELETE /api/v1/admin/documents/{id}` | 删除文档（已发布先撤销） |
+| `POST /api/v1/admin/documents/{id}/publish` | 发布到向量库 |
+| `POST /api/v1/admin/documents/{id}/unpublish` | 撤销发布 |
+| `POST /api/v1/admin/documents/batch-publish` | 批量发布 |
+| `POST /api/v1/admin/documents/import` | 批量导入 MD 文件 |
+| `GET /api/v1/admin/documents/categories` | 分类列表 |
+
+---
+
+## 十六、资源复用（v2）+ 随机测试
+
+### 模块概述
+
+将知识点、测试题、语音等资源从"绑定卡片"改为"绑定单词"，实现跨卡片组复用，减少 LLM 调用和存储冗余。同时新增随机测试功能，基于复习计数实现间隔巩固。
+
+### 核心改动
+
+| 资源 | 改前 | 改后 |
+|------|------|------|
+| 知识点 (KP) | 绑定 card_id，存 content | 纯索引（word_id + point_type），不存内容，学习进度移到 snap_card_kp_progress |
+| 测试题 | 绑定 group_id + card_id | 绑定 word_id（题库），独立 snap_test_session_questions（测次关联） |
+| 语音 | snap_card_audios（card_id） | snap_word_audios（word_id），跨组复用 |
+
+### 随机测试
+
+| 需求 | 说明 | 优先级 |
+|------|------|--------|
+| 随机抽题 | 从 snap_random_test_pool 中按 review_count > 0 随机抽取 N 个单词 | P0 |
+| 计数规则 | 首次生成入池 review_count=2；任何测试答错→4；随机测试答对→-1；减到 0 出库 | P0 |
+| 实时标记 | 用户答错时前端立即调用 mark-wrong 接口，同步更新 review_count | P0 |
+| 重新入库 | 已出库单词在任何测试中再次答错，review_count=4 重新入池 | P1 |
+
+### 数据结构
+
+新增表：
+
+| 表 | 说明 |
+|----|------|
+| `snap_card_kp_progress` | 卡片知识点学习进度（card_id, kp_id, status） |
+| `snap_word_audios` | 单词音频缓存（word_id, voice_id, audio_type） |
+| `snap_test_session_questions` | 测次关联（group_id, card_id, question_id） |
+| `snap_random_test_pool` | 随机测试池（word_id, user_id, review_count, source） |
+
+### API（随机测试）
+
+| 端点 | 说明 |
+|------|------|
+| `POST /api/v1/random-test/start` | 开始随机测试（参数 count，默认 10） |
+| `POST /api/v1/random-test/submit` | 提交答案（question_ids + user_answers） |
+| `POST /api/v1/random-test/mark-wrong` | 实时标记答错（word_id + question_type） |

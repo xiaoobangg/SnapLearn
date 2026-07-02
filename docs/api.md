@@ -141,6 +141,59 @@ data: ！很高兴
 data: 见到你
 ```
 
+### 随机测试
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/random-test/start` | 开始随机测试（参数 count，默认 10） |
+| POST | `/api/v1/random-test/submit` | 提交答案（question_ids + user_answers） |
+| POST | `/api/v1/random-test/mark-wrong` | 实时标记答错（word_id + question_type） |
+
+**POST /api/v1/random-test/start** 请求体：
+
+```json
+{
+  "count": 10
+}
+```
+
+响应：
+
+```json
+{
+  "session_id": "abc123",
+  "questions": [
+    {
+      "id": "q1",
+      "word_id": "w1",
+      "word_text": "climate",
+      "question_type": "meaning_select",
+      "question_text": "What does 'climate' mean?",
+      "options": ["气候", "天气", "温度", "季节"],
+      "correct_answer": "气候"
+    }
+  ]
+}
+```
+
+**POST /api/v1/random-test/submit** 请求体：
+
+```json
+{
+  "question_ids": ["q1", "q2", "q3"],
+  "user_answers": ["气候", "天气", "temperature"]
+}
+```
+
+**POST /api/v1/random-test/mark-wrong** 请求体：
+
+```json
+{
+  "word_id": "w1",
+  "question_type": "meaning_select"
+}
+```
+
 ### API Key 管理
 
 | 方法 | 路径 | 说明 |
@@ -260,6 +313,44 @@ data: 见到你
 | POST | `/api/v1/admin/knowledge/upload` | 上传文档（multipart/form-data） |
 | GET | `/api/v1/admin/knowledge` | 文档列表（含块数） |
 | DELETE | `/api/v1/admin/knowledge/{id}` | 删除文档 + 向量 |
+
+### 文档管理
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/admin/documents?keyword=&category=&status=&page=1&size=20` | 文档列表（搜索/分类/状态筛选） |
+| GET | `/api/v1/admin/documents/{id}` | 文档详情 |
+| POST | `/api/v1/admin/documents` | 创建文档 |
+| PUT | `/api/v1/admin/documents/{id}` | 更新文档 |
+| DELETE | `/api/v1/admin/documents/{id}` | 删除文档（已发布先撤销） |
+| POST | `/api/v1/admin/documents/{id}/publish` | 发布到向量库 |
+| POST | `/api/v1/admin/documents/{id}/unpublish` | 撤销发布 |
+| POST | `/api/v1/admin/documents/batch-publish` | 批量发布 |
+| POST | `/api/v1/admin/documents/import` | 批量导入 MD 文件（multipart/form-data） |
+| GET | `/api/v1/admin/documents/categories` | 分类列表 |
+
+**POST /api/v1/admin/documents** 请求体：
+
+```json
+{
+  "title": "Git 常用命令",
+  "content": "# Git 常用命令\n\n...",
+  "category": "开发工具",
+  "tags": "git, 版本控制"
+}
+```
+
+**PUT /api/v1/admin/documents/{id}** 请求体同上。
+
+**POST /api/v1/admin/documents/batch-publish** 请求体：
+
+```json
+{
+  "ids": ["id1", "id2", "id3"]
+}
+```
+
+**POST /api/v1/admin/documents/import** 请求：`multipart/form-data`，字段 `files`（多个 .md 文件）。
 
 ### AI 对话日志
 

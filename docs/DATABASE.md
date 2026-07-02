@@ -41,18 +41,23 @@
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  snap_words  ──1:1──>  snap_word_contents  <──1:N──  snap_knowledge_points  │
-│                                                        │                   │
-│                                                        └───N:1──>  snap_cards │
+│     │                                                  (纯索引，不存内容)    │
+│     │                                                        │              │
+│     ├───1:N──>  snap_word_audios (单词音频)                  │              │
+│     │                                                        │              │
+│     └───1:N──>  snap_cards ──1:N──>  snap_card_kp_progress  │              │
+│                                                        │     │              │
+│                                                        └─────┘              │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                        3. 卡片组与卡片（任务驱动学习）                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  snap_card_groups  ──1:N──>  snap_cards  ──1:N──>  snap_test_questions     │
-│      │                           │                              │          │
-│      │                           └───N:1──>  snap_error_book    │          │
-│      │                                              │           │          │
-│      └───────────────────────────────────────────────┴───N:1──>  snap_test_attempts │
+│  snap_card_groups  ──1:N──>  snap_cards  ──1:N──>  snap_error_book         │
+│      │                           │                              │           │
+│      │                           └───N:1──>  snap_test_attempts │           │
+│      │                                                              │       │
+│      └───1:N──>  snap_test_session_questions  ──N:1──>  snap_test_questions │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                        4. 词库与每日打卡（习惯驱动）                          │
@@ -71,6 +76,16 @@
 │  snap_chat_conversations  ──1:N──>  SPRING_AI_CHAT_MEMORY                  │
 │       │                                                                     │
 │       └───1:N──>  snap_chat_traces                                         │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                        6. 文档管理 + 随机测试                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  snap_documents  ──1:N──>  snap_knowledge_files  ──1:N──>  vector_store    │
+│                                                                             │
+│  snap_random_test_pool  ──N:1──>  snap_words                                │
+│       │                                                                     │
+│       └───N:1──>  snap_users                                               │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -188,30 +203,45 @@
 
 **设计要点**：单词内容独立存储，一个单词只有一份内容。更新内容会同步影响所有引用该单词的卡片组和打卡池。
 
-#### snap_knowledge_points（知识点表）
+#### snap_knowledge_points（知识点表 — 纯索引）
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
 | id | VARCHAR(36) | PRIMARY KEY | 知识点ID |
 | word_id | VARCHAR(36) | NOT NULL | 单词ID |
-| card_id | VARCHAR(36) | - | 所属卡片（可为空） |
-| point_type | VARCHAR(30) | NOT NULL | 类型（pronunciation/meaning/extended/example/tip/pos） |
-| content | TEXT | NOT NULL | 知识点内容 |
+| point_type | VARCHAR(30) | NOT NULL | 类型（pronunciation/pos/general_meaning/extended_meaning/example_sentence/memory_tip） |
 | sort_order | INT | DEFAULT 0 | 展示顺序 |
-| status | VARCHAR(20) | DEFAULT 'unshown' | 状态（unshown/show/confirmed） |
 | created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
 
-**索引**：`idx_snap_kp_word(word_id)`、`idx_snap_kp_card(card_id)`
+**约束**：UNIQUE(word_id, point_type)
 
-**知识点类型说明**：
-| point_type | 含义 |
-|------------|------|
-| pronunciation | 发音 |
-| meaning | 通用释义 |
-| extended | 语境含义 |
-| example | 例句 |
-| tip | 记忆技巧 |
-| pos | 词性 |
+**索引**：`idx_snap_kp_word(word_id)`
+
+**设计要点**：v2 资源复用后，KP 退化为纯索引行，不存内容。读取时 JOIN `snap_word_contents` 按 `point_type` 取对应字段。学习进度移到 `snap_card_kp_progress`。
+
+**知识点类型 → word_contents 字段映射**：
+
+| point_type | 取自 word_contents 哪个字段 |
+|------------|---------------------------|
+| pronunciation | `pronunciation` |
+| pos | `pos` |
+| general_meaning | `general_meaning` |
+| extended_meaning | `extended_meaning` |
+| example_sentence | `example_sentence` |
+| memory_tip | `memory_tip` |
+
+#### snap_card_kp_progress（卡片知识点学习进度）
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| id | VARCHAR(36) | PRIMARY KEY | 进度ID |
+| card_id | VARCHAR(36) | NOT NULL | 卡片ID |
+| kp_id | VARCHAR(36) | NOT NULL | 知识点ID |
+| status | VARCHAR(20) | DEFAULT 'unshown' | 状态（unshown/shown/confirmed） |
+
+**约束**：UNIQUE(card_id, kp_id)
+
+**索引**：`idx_snap_ckp_card(card_id)`、`idx_snap_ckp_kp(kp_id)`
 
 ---
 
@@ -274,13 +304,12 @@ pending → learning → learn_done → testing → test_done
 
 ### 4. 测试与错题
 
-#### snap_test_questions（测试题目表）
+#### snap_test_questions（测试题目表 — 题库）
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
 | id | VARCHAR(36) | PRIMARY KEY | 题目ID |
-| group_id | VARCHAR(36) | NOT NULL | 卡片组ID |
-| card_id | VARCHAR(36) | NOT NULL | 卡片ID |
+| word_id | VARCHAR(36) | NOT NULL | 单词ID |
 | question_type | VARCHAR(30) | NOT NULL | 题型 |
 | question_text | TEXT | NOT NULL | 题目文本 |
 | options | JSONB | NOT NULL | 选项数组 |
@@ -288,7 +317,11 @@ pending → learning → learn_done → testing → test_done
 | sort_order | INT | DEFAULT 0 | 排序 |
 | created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
 
-**索引**：`idx_snap_tq_group(group_id)`、`idx_snap_tq_card(card_id)`
+**约束**：UNIQUE(word_id, question_type)
+
+**索引**：`idx_snap_tq_word(word_id)`
+
+**设计要点**：v2 资源复用后，题库绑定 `word_id` 而非 `group_id`/`card_id`。一个单词 4 种题型 = 最多 4 行，跨卡片组复用。
 
 **题型说明**：
 | question_type | 含义 |
@@ -297,6 +330,19 @@ pending → learning → learn_done → testing → test_done
 | word_select | 单词选择 |
 | collocation | 搭配填空 |
 | spelling | 拼写测试 |
+
+#### snap_test_session_questions（测次关联表）
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| id | VARCHAR(36) | PRIMARY KEY | 关联ID |
+| group_id | VARCHAR(36) | NOT NULL | 卡片组ID |
+| card_id | VARCHAR(36) | NOT NULL | 卡片ID |
+| question_id | VARCHAR(36) | NOT NULL | 题目ID（关联 snap_test_questions） |
+| sort_order | INT | DEFAULT 0 | 排序 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+
+**索引**：`idx_snap_tsq_group(group_id)`、`idx_snap_tsq_card(card_id)`、`idx_snap_tsq_question(question_id)`
 
 #### snap_test_attempts（测试答题记录表）
 
@@ -497,6 +543,27 @@ pending → learning → learn_done → testing → test_done
 | chunk_count | INT | DEFAULT 0 | 分块数量 |
 | upload_time | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 上传时间 |
 
+#### snap_documents（文档管理）
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| id | VARCHAR(36) | PRIMARY KEY | 文档ID |
+| user_id | VARCHAR(36) | NOT NULL | 用户ID |
+| title | VARCHAR(300) | NOT NULL | 文档标题 |
+| content | TEXT | NOT NULL | Markdown 原文 |
+| category | VARCHAR(50) | - | 分类 |
+| tags | VARCHAR(500) | - | 逗号分隔标签 |
+| status | VARCHAR(20) | DEFAULT 'draft' | 状态（draft/published/archived） |
+| source_type | VARCHAR(20) | DEFAULT 'md' | 来源（md/word/pdf） |
+| source_name | VARCHAR(300) | - | 原始文件名 |
+| file_size | BIGINT | - | 文件大小 |
+| sort_order | INT | DEFAULT 0 | 排序 |
+| knowledge_file_id | VARCHAR(36) | - | 发布后关联 snap_knowledge_files.id |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+| updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 更新时间 |
+
+**索引**：`idx_snap_docs_user(user_id)`、`idx_snap_docs_status(user_id, status)`、`idx_snap_docs_category(user_id, category)`
+
 #### snap_voices（音色表）
 
 | 字段名 | 类型 | 约束 | 说明 |
@@ -517,16 +584,43 @@ pending → learning → learn_done → testing → test_done
 | is_active | BOOLEAN | - | 是否启用 |
 | created_at | TIMESTAMP | - | 创建时间 |
 
-#### snap_card_audios（卡片音频表）
+#### snap_word_audios（单词音频表 — 原 snap_card_audios）
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
 | id | VARCHAR(36) | PRIMARY KEY | 音频ID |
-| card_id | VARCHAR(36) | NOT NULL | 卡片ID |
+| word_id | VARCHAR(36) | NOT NULL | 单词ID |
+| voice_id | VARCHAR(36) | NOT NULL | 音色ID |
+| audio_type | VARCHAR(20) | NOT NULL | 音频类型（word/sentence） |
 | audio_url | VARCHAR(500) | NOT NULL | 音频URL |
-| voice_id | VARCHAR(36) | - | 音色ID |
-| text | TEXT | - | 合成文本 |
+| duration_ms | INTEGER | - | 时长（毫秒） |
+| file_size | BIGINT | - | 文件大小 |
 | created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+
+**约束**：UNIQUE(word_id, voice_id, audio_type)
+
+**索引**：`idx_snap_wa_word(word_id)`、`idx_snap_wa_voice(voice_id)`
+
+**设计要点**：v2 资源复用后，音频绑定 `word_id` 而非 `card_id`。同一单词 + 同一音色 + 同一类型 = 只合成一次，跨卡片组复用。
+
+#### snap_random_test_pool（随机测试池）
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| id | VARCHAR(36) | PRIMARY KEY | 记录ID |
+| word_id | VARCHAR(36) | NOT NULL | 单词ID |
+| question_type | VARCHAR(30) | NOT NULL DEFAULT 'meaning_select' | 题型 |
+| user_id | VARCHAR(36) | NOT NULL | 用户ID |
+| review_count | INT | DEFAULT 2 | 还需复习次数 |
+| source | VARCHAR(20) | DEFAULT 'auto' | 来源（auto=首次生成 / error=答错加入） |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+| updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 更新时间 |
+
+**约束**：UNIQUE(word_id, question_type, user_id)
+
+**索引**：`idx_snap_rtp_user(user_id, review_count)`
+
+**计数规则**：测试题首次生成自动入池（review_count=2）；任何测试答错 → review_count=4；随机测试答对 → review_count -= 1；减到 0 出库。
 
 #### vector_store（向量存储表）
 
@@ -550,13 +644,13 @@ pending → learning → learn_done → testing → test_done
                            ↓
                   snap_word_contents (LLM生成)
                            ↓
-                  snap_knowledge_points (拆分6个KP)
+                  snap_knowledge_points (纯索引，不存内容)
                            ↓
            snap_card_groups → snap_cards (关联)
                            ↓
-              学习：KnowledgePoint.status 流转
+              学习：snap_card_kp_progress → status 流转
                            ↓
-              测试：snap_test_questions → snap_test_attempts
+              测试：snap_test_questions (题库) → snap_test_session_questions (关联)
                            ↓
               错题：snap_error_book
 ```
@@ -573,6 +667,26 @@ pending → learning → learn_done → testing → test_done
          snap_daily_checkin_log (记录打卡)
 ```
 
+### 文档管理流程
+
+```
+管理端编辑器 → snap_documents (Markdown 原稿)
+                   ↓ 发布
+         KnowledgeVectorService 解析 + 向量化
+                   ↓
+         snap_knowledge_files + vector_store
+```
+
+### 随机测试流程
+
+```
+测试题首次生成 → 自动入池 snap_random_test_pool (review_count=2)
+                   ↓
+         随机测试：抽词 → 取题 → 作答
+         答对 → review_count -= 1 (减到 0 出库)
+         任何测试答错 → review_count = 4
+```
+
 ---
 
 ## 统计信息
@@ -580,10 +694,11 @@ pending → learning → learn_done → testing → test_done
 | 类别 | 表数量 | 说明 |
 |------|--------|------|
 | 用户与认证 | 6 | users, roles, user_roles, admins, user_settings, api_keys |
-| 单词与内容 | 3 | words, word_contents, knowledge_points |
+| 单词与内容 | 4 | words, word_contents, knowledge_points, card_kp_progress |
 | 卡片组与卡片 | 2 | card_groups, cards |
-| 测试与错题 | 3 | test_questions, test_attempts, error_book |
+| 测试与错题 | 5 | test_questions, test_session_questions, test_attempts, error_book, random_test_pool |
 | 词库与打卡 | 4 | word_banks, word_bank_items, user_daily_pool, daily_checkin_log |
 | AI聊天 | 3 | chat_conversations, chat_traces, SPRING_AI_CHAT_MEMORY |
-| 其他 | 4 | api_access_logs, knowledge_files, voices, card_audios |
-| **总计** | **25** | - |
+| 文档与知识库 | 2 | documents, knowledge_files |
+| 其他 | 3 | api_access_logs, voices, word_audios |
+| **总计** | **29** | - |

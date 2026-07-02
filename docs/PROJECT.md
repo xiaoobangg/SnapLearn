@@ -9,6 +9,7 @@
 此外提供：
 - **每日打卡模块**（百词斩风格）：词库 + 间隔重复
 - **AI 对话助手**：基于 Spring AI 1.1.7 + RAG 知识库 + ReactAgent 智能体
+- **文档管理**：在线 Markdown 编辑、批量导入、发布到向量库、AI 辅助写作
 - **Web 后台管理系统**（Vue 3 + Element Plus）：用户管理、卡片组管理、知识库管理、AI 对话日志、可观测性
 - **Coze 插件集成**：支持豆包插件平台的 TTS 调用
 
@@ -532,7 +533,41 @@ ReactAgent（基于 agent-system.st 提示词）
 - `mode=chat`（默认）：走原有 LLMService RAG 流程
 - `mode=agent`：走 ReactAgent，返回结构化 `AgentChatResponse`
 
-### 9. API Key 管理
+### 9. 文档管理
+
+**架构**：统一管理所有 MD 文档，支持在线编辑、批量导入、发布到向量库（RAG 知识库）。
+
+**数据流**：
+```
+管理端编辑器 → snap_documents（Markdown 原稿，status=draft）
+                   ↓ 发布
+         KnowledgeVectorService 解析 → 切片 → 向量化
+                   ↓
+         snap_knowledge_files + vector_store
+                   ↓
+         snap_documents.status = 'published'
+```
+
+**API**（`AdminDocumentController`）：
+
+| 端点 | 说明 |
+|------|------|
+| `GET /admin/documents` | 文档列表（搜索/分类/状态筛选） |
+| `GET /admin/documents/{id}` | 文档详情 |
+| `POST /admin/documents` | 创建文档 |
+| `PUT /admin/documents/{id}` | 更新文档 |
+| `DELETE /admin/documents/{id}` | 删除文档（已发布先撤销） |
+| `POST /admin/documents/{id}/publish` | 发布到向量库 |
+| `POST /admin/documents/{id}/unpublish` | 撤销发布 |
+| `POST /admin/documents/import` | 批量导入 MD 文件 |
+
+**关键文件**：
+- `service/DocumentService.java`：文档 CRUD + 发布/撤销逻辑
+- `service/KnowledgeVectorService.java`：解析 → 切片 → 向量化（复用 AdminKnowledgeController 能力）
+- `controller/AdminDocumentController.java`：REST API
+- `admin/.../documents/`：管理端页面（列表/编辑器/AI助手）
+
+### 10. 资源复用（v2）
 
 **用途**：为 Coze 插件等外部系统提供无 JWT 的认证方式。
 

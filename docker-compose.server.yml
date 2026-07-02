@@ -38,6 +38,7 @@ services:
       WECHAT_APP_ID: ${WECHAT_APP_ID}
       WECHAT_APP_SECRET: ${WECHAT_APP_SECRET}
       DEBUG: ${DEBUG:-false}
+      COZE_API_TOKEN: ${COZE_API_TOKEN}
       APP_BASE_URL: ${APP_BASE_URL:-https://snaplearn.top}
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
