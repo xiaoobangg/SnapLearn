@@ -421,7 +421,7 @@ public class AdminController {
     @PostMapping("/word-banks")
     public Map<String, Object> createWordBank(@RequestBody CreateBankReq req, @CurrentUser String userId) {
         WordBankService wbs = new WordBankService(wordBankMapper,
-                null, wordMapper); // admin creating preset bank
+                null, wordMapper, null); // admin creating preset bank
         // Note: simplified — actual implementation needs proper DI
         return Map.of("ok", true);
     }

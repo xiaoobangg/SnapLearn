@@ -4,9 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.transaction.annotation.Transactional;
 import com.snaplearn.common.exception.BusinessException;
 import com.snaplearn.entity.Card;
+import com.snaplearn.entity.UserDailyPool;
 import com.snaplearn.entity.Word;
 import com.snaplearn.entity.WordBank;
 import com.snaplearn.entity.WordBankItem;
+import com.snaplearn.mapper.UserDailyPoolMapper;
 import com.snaplearn.mapper.WordBankItemMapper;
 import com.snaplearn.mapper.WordBankMapper;
 import com.snaplearn.mapper.WordMapper;
@@ -26,6 +28,7 @@ public class WordBankService {
     private final WordBankMapper wordBankMapper;
     private final WordBankItemMapper wordBankItemMapper;
     private final WordMapper wordMapper;
+    private final UserDailyPoolMapper userDailyPoolMapper;
 
     /**
      * Create a new word bank
@@ -98,9 +101,21 @@ public class WordBankService {
      */
     public List<WordBank> listByUser(String userId) {
         QueryWrapper<WordBank> qw = new QueryWrapper<>();
-        qw.eq("created_by", userId).or().eq("type", "preset");
+        qw.eq("created_by", userId).or().in("type", "preset", "system");
         qw.orderByDesc("created_at");
-        return wordBankMapper.selectList(qw);
+        return wordBankMapper.selectList(qw).stream()
+                .filter(b -> {
+                    if ("system".equals(b.getType())) {
+                        // System banks: show only if user has words in daily pool
+                        QueryWrapper<UserDailyPool> pqw = new QueryWrapper<>();
+                        pqw.eq("user_id", userId).eq("bank_id", b.getId());
+                        return userDailyPoolMapper.selectCount(pqw) > 0;
+                    }
+                    // User/preset banks: show only if they have items
+                    return wordBankItemMapper.selectCount(
+                            new QueryWrapper<WordBankItem>().eq("bank_id", b.getId())) > 0;
+                })
+                .toList();
     }
 
     /**

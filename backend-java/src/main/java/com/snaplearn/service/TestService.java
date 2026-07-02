@@ -16,6 +16,7 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -40,7 +41,10 @@ public class TestService {
     private final WordContentMapper wordContentMapper;
     private final ErrorBookService errorBookService;
     private final RandomTestService randomTestService;
+    private final UserDailyPoolMapper userDailyPoolMapper;
     private final ObjectMapper objectMapper;
+
+    private static final String DEFAULT_BANK_ID = "card-group-bank";
     private final ChatModel deepSeekChatModel;
     private final ChatModel dashScopeChatModel;
     private final PromptLoader promptLoader;
@@ -379,6 +383,28 @@ public class TestService {
             group.setGroupStatus("test_done");
             cardGroupMapper.updateById(group);
             log.info("[TEST-GEN] groupId={} 状态已更新为 test_done", groupId);
+
+            // 自动将单词加入默认卡片组词库
+            QueryWrapper<Card> cardQw = new QueryWrapper<>();
+            cardQw.eq("group_id", groupId);
+            List<Card> cards = cardMapper.selectList(cardQw);
+            for (Card card : cards) {
+                QueryWrapper<UserDailyPool> poolQw = new QueryWrapper<>();
+                poolQw.eq("user_id", userId).eq("bank_id", DEFAULT_BANK_ID).eq("word_id", card.getWordId());
+                if (userDailyPoolMapper.selectCount(poolQw) == 0) {
+                    UserDailyPool pool = new UserDailyPool();
+                    pool.setId(UUID.randomUUID().toString());
+                    pool.setUserId(userId);
+                    pool.setBankId(DEFAULT_BANK_ID);
+                    pool.setWordId(card.getWordId());
+                    pool.setPoolStatus("new");
+                    pool.setIntervalDays(0);
+                    pool.setReviewCount(0);
+                    pool.setNextReviewAt(LocalDateTime.now());
+                    userDailyPoolMapper.insert(pool);
+                }
+            }
+            log.info("[TEST-GEN] groupId={} 已自动添加单词到默认词库", groupId);
         }
 
         return Map.of("total", total, "correct", correctCount, "all_correct", allCorrect, "round", round, "error_card_ids", errorCardIds);
