@@ -33,7 +33,6 @@
       <view class="menu-item" @click="goCheckinShare"><text>📸 打卡分享</text><view class="menu-right"><text>›</text></view></view>
 <view class="menu-item" @click="goCheckinCalendar"><text>📅 打卡日历</text><view class="menu-right"><text class="menu-badge" v-if="checkinStats.consecutive_days > 0">连续{{ checkinStats.consecutive_days }}天</text><text>›</text></view></view>
       <!-- <view class="menu-item" @click="goAIChat"><text>🤖 AI 助手</text><text>›</text></view>-->
-      <view class="menu-item" @click="goMasteredList"><text>📚 已掌握的卡片组</text><view class="menu-right"><text class="menu-badge" v-if="learnStats.testDone > 0">{{ learnStats.testDone }}</text><text>›</text></view></view>
       <view class="menu-item" @click="showAbout"><text>ℹ️ 关于拍立学</text><text>›</text></view>
       <view class="menu-item" @click="handleLogout" v-if="userStore.isLoggedIn"><text class="danger">🚪 退出登录</text><text>›</text></view>
     </view>
@@ -62,8 +61,6 @@ import { api } from "@/api";
 const userStore = useUserStore();
 const checkinStats = ref({ total_checkin_days: 0, consecutive_days: 0, total_pool_words: 0, mastered_count: 0 });
 const learnStats = ref({ totalGroups: 0, testDone: 0 });
-const showMastered = ref(false);
-const masteredGroups = ref<any[]>([]);
 const showNicknameEdit = ref(false);
 const editNickname = ref("");
 
@@ -77,7 +74,7 @@ const avatarSrc = computed(() => {
 
 onShow(async () => {
   if (userStore.isLoggedIn) {
-    try { const [stats, groupList] = await Promise.all([api.getCheckinStats(), api.listCardGroups(true)]); checkinStats.value = stats; const groups = groupList || []; learnStats.value.totalGroups = groups.length; learnStats.value.testDone = groups.filter((g: any) => g.group_status === "test_done").length; masteredGroups.value = groups.filter((g: any) => g.group_status === "test_done"); } catch (_e) { }
+    try { const [stats, groupList] = await Promise.all([api.getCheckinStats(), api.listCardGroups(true)]); checkinStats.value = stats; const groups = groupList || []; learnStats.value.totalGroups = groups.length; learnStats.value.testDone = groups.filter((g: any) => g.group_status === "test_done").length; } catch (_e) { }
   }
 });
 
@@ -108,7 +105,6 @@ function saveNickname() {
   showNicknameEdit.value = false;
 }
 
-function goMasteredList() { showMastered.value = true; }
 function goCheckinShare() { uni.navigateTo({ url: "/pages/checkin-share/checkin-share" }); }
 function goCheckinCalendar() { uni.navigateTo({ url: "/pages/checkin-calendar/checkin-calendar" }); }
 function goAIChat() { uni.switchTab({ url: "/pages/chat/chat" }); }
@@ -134,6 +130,8 @@ async function handleLogout() { const res = await uni.showModal({ title: "提示
 .stat-divider { width: 2rpx; height: 52rpx; background: $border-color; }
 .menu-list { margin: $spacing-lg $spacing-xl 0; background: $bg-card; border-radius: $radius-md; box-shadow: $shadow-sm; overflow: hidden; }
 .menu-item { display: flex; align-items: center; justify-content: space-between; padding: $spacing-xl $spacing-lg; border-bottom: 2rpx solid $border-light; &:active { background: $bg-primary; } .danger { color: $danger; } }
+.menu-right { display: flex; align-items: center; gap: $spacing-sm; color: $text-muted; font-size: $font-base; }
+.menu-badge { font-size: $font-sm; color: $primary; background: $bg-secondary; padding: 4rpx 14rpx; border-radius: $radius-pill; }
 
 /* nickname edit modal */
 .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 999; }

@@ -462,6 +462,9 @@ public class AdminController {
             m.put("pronunciation", wc != null ? wc.getPronunciation() : "");
             m.put("pos", wc != null ? wc.getPos() : "");
             m.put("general_meaning", wc != null ? wc.getGeneralMeaning() : "");
+            m.put("extended_meaning", wc != null ? wc.getExtendedMeaning() : "");
+            m.put("example_sentence", wc != null ? wc.getExampleSentence() : "");
+            m.put("memory_tip", wc != null ? wc.getMemoryTip() : "");
             m.put("llm_version", wc != null ? wc.getLlmVersion() : "");
             m.put("updated_at", wc != null && wc.getUpdatedAt() != null ? wc.getUpdatedAt().toString() : "");
             return m;

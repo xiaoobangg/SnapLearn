@@ -44,7 +44,7 @@ public class WordContentService {
         wc.setExtendedMeaning(c.extendedMeaning());
         wc.setExampleSentence(c.exampleSentence());
         wc.setMemoryTip(c.memoryTip());
-        wc.setLlmVersion("1.0");
+        wc.setLlmVersion("1");
         wordContentMapper.insert(wc);
         return wc;
     }
@@ -71,7 +71,7 @@ public class WordContentService {
             existing.setExampleSentence(c.exampleSentence());
             existing.setMemoryTip(c.memoryTip());
             existing.setLlmVersion(existing.getLlmVersion() != null
-                    ? String.valueOf(Integer.parseInt(existing.getLlmVersion()) + 1) : "2");
+                    ? String.valueOf((int) Double.parseDouble(existing.getLlmVersion()) + 1) : "2");
             wordContentMapper.updateById(existing);
             return existing;
         } else {
@@ -84,7 +84,7 @@ public class WordContentService {
             wc.setExtendedMeaning(c.extendedMeaning());
             wc.setExampleSentence(c.exampleSentence());
             wc.setMemoryTip(c.memoryTip());
-            wc.setLlmVersion("1.0");
+            wc.setLlmVersion("1");
             wordContentMapper.insert(wc);
             return wc;
         }
