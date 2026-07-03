@@ -4,6 +4,7 @@
 			<view class="progress-wrap" v-if="stepperRef">
 				<view class="progress-bar">
 					<view v-for="(card, ci) in cardsWithKps" :key="ci" class="pb-seg" :class="segClass(card, ci)" :style="{ width: (100/cardsWithKps.length) + '%' }" />
+					<text class="pb-smiley" :style="{ left: smileyLeft + '%' }">😊</text>
 				</view>
 				<text class="progress-text">{{ displayProgress }} / {{ cards.length }}</text>
 			</view>
@@ -50,6 +51,7 @@
 	const stepperKey = ref(0);
 	const displayProgress = computed(() => cardsWithKps.value.filter((c: any) => c.cardStatus !== "unlearned").length);
 	const curIdx = computed(() => stepperRef.value?.currentIndex ?? 0);
+		const smileyLeft = computed(() => cardsWithKps.value.length > 0 ? displayProgress.value / cardsWithKps.value.length * 100 : 0);
 	const stepperFinished = computed(() => stepperRef.value ? displayProgress.value >= cards.value.length : false);
 	// cardsWithKps reads parent-managed Sets — no circular dependency on stepper internals
 	const cardsWithKps = computed(() => {
@@ -100,7 +102,8 @@
 		.progress-text { font-size: $font-base; color: $text-primary; font-weight: $font-weight-bold; flex-shrink: 0; }
 		.progress-wrap { flex: 1; display: flex; align-items: center; gap: 10rpx; }
 		.progress-bar { flex: 1; height: 28rpx; background: #F3F4F6; border-radius: 14rpx; overflow: visible; position: relative; display: flex; }
-		.pb-seg { height: 100%; position: relative; transition: background 0.3s; &:first-child { border-radius: 14rpx 0 0 14rpx; } &:last-child { border-radius: 0 14rpx 14rpx 0; } &.seg-current { &::after { content: "😊"; position: absolute; top: -25rpx; left: 50%; transform: translateX(-50%); font-size: 45rpx; } } &.seg-done { background: #10B981; } &.seg-relearn { background: #F59E0B; } &.seg-pending { background: #E5E7EB; } }
+		.pb-seg { height: 100%; transition: background 0.3s; &:first-child { border-radius: 14rpx 0 0 14rpx; } &:last-child { border-radius: 0 14rpx 14rpx 0; } &.seg-done { background: #10B981; } &.seg-relearn { background: #F59E0B; } &.seg-pending { background: #E5E7EB; } }
+		.pb-smiley { position: absolute; top: 50%; transform: translate(0, -50%); font-size: 45rpx; z-index: 2; margin-left: -22rpx; }
 		.menu-btn { background: $bg-card; width: 56rpx; height: 56rpx; line-height: 56rpx; text-align: center; border-radius: 50%; box-shadow: $shadow-sm; } }
 	.status-banner { margin: 0 $spacing-xl $spacing-sm; border-radius: $radius-md; padding: 18rpx $spacing-lg; font-size: $font-sm; font-weight: $font-weight-semibold;
 		&.done { background: #D1FAE5; color: #059669; }

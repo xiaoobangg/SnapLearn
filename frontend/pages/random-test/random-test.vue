@@ -4,6 +4,7 @@
     <view class="progress-wrap" v-if="questions.length > 0">
       <view class="progress-bar">
         <view v-for="(q, qi) in questions" :key="'pb-' + q.id" class="pb-seg" :class="segClass(q, qi)" :style="{ width: (100/questions.length) + '%' }" />
+        <text class="pb-smiley" :style="{ left: smileyLeft + '%' }">😊</text>
       </view>
       <text class="progress-text">{{ answeredCount }} / {{ questions.length }}</text>
     </view>
@@ -31,6 +32,7 @@ const questionStatus = reactive<Record<string, string>>({});
 const currentIndex = ref(0);
 const scrollHeight = ref(500);
 const answeredCount = computed(() => Object.keys(answeredMap).length);
+const smileyLeft = computed(() => questions.value.length > 0 ? answeredCount.value / questions.value.length * 100 : 0);
 const allAnswered = computed(() => questions.value.length > 0 && questions.value.every(q => answeredMap[q.id]));
 const allCorrect = computed(() => questions.value.length > 0 && questions.value.every(q => questionStatus[q.id] === "correct"));
 const canConfirm = computed(() => allAnswered.value && allCorrect.value);
@@ -93,7 +95,8 @@ function goBack() { uni.navigateBack(); }
 .test-header { display: flex; align-items: center; gap: $spacing-base; padding: $spacing-lg $spacing-xl $spacing-base; background: $bg-card; border-bottom: 2rpx solid $border-light; flex-shrink: 0; .th-back { font-size: $font-xl; color: $primary; width: 56rpx; height: 56rpx; display: flex; align-items: center; justify-content: center; background: $bg-secondary; border-radius: 50%; } .th-title { font-size: $font-lg; font-weight: $font-weight-bold; flex: 1; } }
 .progress-wrap { display: flex; align-items: center; gap: 10rpx; padding: $spacing-sm $spacing-xl; background: $bg-card; flex-shrink: 0; }
 .progress-bar { flex: 1; height: 28rpx; background: #F3F4F6; border-radius: 14rpx; overflow: visible; display: flex; position: relative; }
-.pb-seg { height: 100%; position: relative; transition: background 0.3s; &:first-child { border-radius: 14rpx 0 0 14rpx; } &:last-child { border-radius: 0 14rpx 14rpx 0; } &.seg-current { &::after { content: "😊"; position: absolute; top: -25rpx; left: 50%; transform: translateX(-50%); font-size: 45rpx; } } &.seg-done { background: #10B981; } &.seg-wrong { background: #F59E0B; } &.seg-pending { background: #E5E7EB; } }
+.pb-seg { height: 100%; transition: background 0.3s; &:first-child { border-radius: 14rpx 0 0 14rpx; } &:last-child { border-radius: 0 14rpx 14rpx 0; } &.seg-done { background: #10B981; } &.seg-wrong { background: #F59E0B; } &.seg-pending { background: #E5E7EB; } }
+.pb-smiley { position: absolute; top: 50%; transform: translate(0, -50%); font-size: 45rpx; z-index: 2; margin-left: -22rpx; }
 .progress-text { font-size: $font-sm; color: $text-secondary; font-weight: $font-weight-bold; flex-shrink: 0; }
 .test-body { flex: 1; padding: 0 $spacing-xl 200rpx; }
 .test-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 120rpx 0; color: $text-secondary; font-size: $font-lg; }
