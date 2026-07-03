@@ -2,10 +2,10 @@ package com.snaplearn.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.snaplearn.entity.CardAudio;
 import com.snaplearn.entity.Voice;
-import com.snaplearn.mapper.CardAudioMapper;
+import com.snaplearn.entity.WordAudio;
 import com.snaplearn.mapper.VoiceMapper;
+import com.snaplearn.mapper.WordAudioMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,7 +19,7 @@ import java.util.UUID;
 public class VoiceService {
 
     private final VoiceMapper voiceMapper;
-    private final CardAudioMapper cardAudioMapper;
+    private final WordAudioMapper wordAudioMapper;
 
     public List<Voice> listActive() {
         QueryWrapper<Voice> qw = new QueryWrapper<>();
@@ -45,9 +45,9 @@ public class VoiceService {
 
     public void delete(String id) {
         // 先清关联的音频记录
-        QueryWrapper<CardAudio> aq = new QueryWrapper<>();
+        QueryWrapper<WordAudio> aq = new QueryWrapper<>();
         aq.eq("voice_id", id);
-        cardAudioMapper.delete(aq);
+        wordAudioMapper.delete(aq);
         voiceMapper.deleteById(id);
     }
 

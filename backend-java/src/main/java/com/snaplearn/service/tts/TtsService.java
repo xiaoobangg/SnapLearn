@@ -56,7 +56,9 @@ public class TtsService {
             byte[] audio = p.synthesize(text, voice.getVoiceCode(), voice.getTtsModel(), fmt, sr, vol, rate, pitch, voice.getInstruction());
             Files.createDirectories(audioDir);
             String ext = fmt != null && !fmt.isBlank() ? fmt : "mp3";
-            String fileName = fileNamePrefix + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + ext;
+            // Sanitize filename: remove chars invalid on Windows/Unix
+            String safe = fileNamePrefix.replaceAll("[\\\\/:*?\"<>|]", "").replaceAll("\\s+", "_");
+            String fileName = safe + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + ext;
             Path filePath = audioDir.resolve(fileName);
             try (FileOutputStream fos = new FileOutputStream(filePath.toFile())) {
                 fos.write(audio);

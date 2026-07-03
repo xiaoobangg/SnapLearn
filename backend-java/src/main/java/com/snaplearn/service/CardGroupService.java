@@ -277,6 +277,7 @@ public class CardGroupService {
                     wc != null ? wc.getPronunciation() : "",
                     c.getCreatedAt() != null ? c.getCreatedAt().toString() : "",
                     c.getCardStatus(),
+                    c.getWordId(),
                     kpResps
             ));
         }

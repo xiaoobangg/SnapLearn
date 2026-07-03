@@ -34,26 +34,28 @@ public class TtsController {
     @GetMapping("/tts")
     public Map<String, Object> tts(@RequestParam String text,
                                    @RequestParam(defaultValue = "") String cardId,
+                                   @RequestParam(defaultValue = "") String wordId,
                                    @RequestParam(defaultValue = "") String type,
                                    @CurrentUser String userId) {
         String prefVoiceId = userSettingsService.getVoiceId(userId);
         Voice voice = voiceService.getEffectiveVoice(prefVoiceId);
 
-        // 有 cardId → 解析 wordId → 缓存优先（按 word_id 复用音频）
+        // 有 cardId 或 wordId → 缓存优先（按 word_id 复用音频）
         if (!cardId.isBlank() && !type.isBlank()) {
             Card card = cardMapper.selectById(cardId);
             if (card != null) {
-                String wordId = card.getWordId();
-                WordAudio cached = cardAudioService.findExisting(wordId, voice.getId(), type);
-                if (cached != null) {
-                    return Map.of("audio_url", cached.getAudioUrl(), "cached", true);
-                }
-
-                WordAudio generated = generateForWord(wordId, type, voice, text);
-                if (generated != null) {
-                    return Map.of("audio_url", generated.getAudioUrl(), "cached", false);
-                }
+                WordAudio cached = cardAudioService.findExisting(card.getWordId(), voice.getId(), type);
+                if (cached != null) return Map.of("audio_url", cached.getAudioUrl(), "cached", true);
+                WordAudio generated = generateForWord(card.getWordId(), type, voice, text);
+                if (generated != null) return Map.of("audio_url", generated.getAudioUrl(), "cached", false);
             }
+        }
+        // wordId 直传（打卡页等非卡片场景）
+        if (!wordId.isBlank() && !type.isBlank()) {
+            WordAudio cached = cardAudioService.findExisting(wordId, voice.getId(), type);
+            if (cached != null) return Map.of("audio_url", cached.getAudioUrl(), "cached", true);
+            WordAudio generated = generateForWord(wordId, type, voice, text);
+            if (generated != null) return Map.of("audio_url", generated.getAudioUrl(), "cached", false);
         }
 
         // 纯文本

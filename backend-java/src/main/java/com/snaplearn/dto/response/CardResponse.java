@@ -16,12 +16,13 @@ public record CardResponse(
         String pronunciation,
         String createdAt,
         String cardStatus,
+        String wordId,
         List<KnowledgePointResponse> knowledgePoints
 ) {
     public CardResponse(String id, String word, String generalMeaning, String extendedMeaning,
                         String exampleSentence, String memoryTip, String pos,
                         String pronunciation, String createdAt) {
         this(id, word, generalMeaning, extendedMeaning, exampleSentence, memoryTip,
-                pos, pronunciation, createdAt, null, null);
+                pos, pronunciation, createdAt, null, null, null);
     }
 }

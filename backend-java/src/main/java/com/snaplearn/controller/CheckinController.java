@@ -182,7 +182,8 @@ public class CheckinController {
 
     // ===== Request records =====
 
-    public record MarkRequest(String poolId, String mark) {
+    public record MarkRequest(@com.fasterxml.jackson.annotation.JsonProperty("poolId") String poolId,
+                              @com.fasterxml.jackson.annotation.JsonProperty("mark") String mark) {
     }
 
     public record CompleteRequest(String bankId, int newCount, int reviewCount,
