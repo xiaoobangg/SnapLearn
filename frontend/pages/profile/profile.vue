@@ -1,4 +1,4 @@
-﻿<template>
+﻿﻿<template>
   <view class="profile">
     <view class="not-login" v-if="!userStore.isLoggedIn">
       <view class="nl-avatar-wrap"><text>👤</text></view>

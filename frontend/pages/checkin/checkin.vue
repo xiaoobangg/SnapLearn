@@ -38,7 +38,9 @@
         </view>
         <view class="ci-progress">
           <view class="ci-progress-bar">
-            <view class="ci-progress-fill" :style="{ width: (markedCount / totalWords * 100) + '%' }" />
+            <view class="ci-progress-fill" :style="{ width: (markedCount / totalWords * 100) + '%' }">
+              <text class="ci-progress-smiley" v-if="totalWords > 0">😊</text>
+            </view>
           </view>
           <text class="ci-progress-text">{{ markedCount }} / {{ totalWords }}</text>
         </view>
@@ -147,7 +149,18 @@ async function selectBank(bank: any) { selectedBankId.value = bank.id; selectedB
 async function handleCreateBank() { try { const res = await api.createWordBank(newBankName.value.trim()); const bank = (res as any).bank; if (bank) { selectedBankId.value = bank.id; selectedBankName.value = bank.name; await loadTodayWords(); } } catch (_e) { uni.showToast({ title: "创建失败", icon: "none" }); } }
 async function loadTodayWords() { try { const data = await api.getTodayCheckin(selectedBankId.value); newWords.value = (data as any).new_words || []; reviewWords.value = (data as any).review_words || []; } catch (_e) { uni.showToast({ title: "加载失败", icon: "none" }); } }
 function handleMark(poolId: string, mark: string, type: "new" | "review") {
-  if (type === "new") markedNew.value++; else markedReview.value++;
+  if (type === "new") {
+    markedNew.value++;
+    // Auto-advance to next new word, or to review section
+    if (newIdx.value < newWords.value.length - 1) {
+      setTimeout(() => { newIdx.value++; }, 300);
+    }
+  } else {
+    markedReview.value++;
+    if (reviewIdx.value < reviewWords.value.length - 1) {
+      setTimeout(() => { reviewIdx.value++; }, 300);
+    }
+  }
   if (mark === "known") markCounts.known++; else if (mark === "fuzzy") markCounts.fuzzy++; else markCounts.unknown++;
   api.markCheckinWord(poolId, mark).catch(() => {});
 }
@@ -198,9 +211,10 @@ function goShare() {
 .ci-back { font-size: $font-base; color: $primary; }
 .ci-bank-name { font-size: $font-lg; font-weight: $font-weight-bold; color: $text-primary; }
 .ci-progress { display: flex; align-items: center; gap: 16rpx; }
-.ci-progress-bar { flex: 1; height: 12rpx; background: #E5E7EB; border-radius: 6rpx; overflow: hidden; }
-.ci-progress-fill { height: 100%; background: linear-gradient(90deg, #10B981, #34D399); border-radius: 6rpx; transition: width 0.3s; }
-.ci-progress-text { font-size: $font-sm; color: $text-secondary; flex-shrink: 0; font-weight: $font-weight-semibold; }
+.ci-progress-bar { flex: 1; height: 24rpx; background: #E5E7EB; border-radius: 12rpx; }
+.ci-progress-fill { height: 100%; background: linear-gradient(90deg, #10B981, #34D399); border-radius: 12rpx; transition: width 0.3s; min-width: 48rpx; display: flex; align-items: center; justify-content: flex-end; }
+.ci-progress-smiley { font-size: 44rpx; margin-left: auto; margin-right: -12rpx; transform: translateY(-4rpx); }
+.ci-progress-text { font-size: $font-base; color: $text-secondary; flex-shrink: 0; font-weight: $font-weight-semibold; }
 .ci-section { padding: 0 $spacing-xl; margin-top: 24rpx; }
 .ci-section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
 .ci-section-title { font-size: $font-base; font-weight: $font-weight-bold; color: $text-primary; }

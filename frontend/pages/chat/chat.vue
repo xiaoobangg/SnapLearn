@@ -19,7 +19,8 @@
 			</view>
 			<view v-for="(msg, mi) in messages" :key="mi" class="chat-msg" :class="{ user: msg.role === 'user' }">
 				<view class="cm-avatar" v-if="msg.role === 'assistant'"><text>🤖</text></view>
-				<view class="cm-bubble"><text>{{ msg.content }}</text>
+				<view class="cm-bubble" @longpress="copyText(msg.content)"><text>{{ msg.content }}</text>
+						<view class="cm-copy-btn" @click.stop="copyText(msg.content)" v-if="msg.content">📋</view>
 					<view class="cm-cursor" v-if="mi === messages.length - 1 && streaming">|</view>
 				</view>
 				<view class="cm-avatar" v-if="msg.role === 'user'"><text>😊</text></view>
@@ -200,6 +201,10 @@
 			if (currentChatId.value === chatId) { currentChatId.value = ""; messages.value = []; }
 			uni.showToast({ title: "已删除", icon: "success" });
 		} catch (_e) { uni.showToast({ title: "删除失败", icon: "none" }); }
+	}
+function copyText(text) {
+		if (!text) return;
+		uni.setClipboardData({ data: text, success: () => { uni.showToast({ title: "已复制", icon: "success" }); } });
 	}
 </script>
 <style lang="scss" scoped>

@@ -253,15 +253,18 @@ public class DailyCheckinService {
         WordContent wc = wordContentMapper.selectOne(
                 new QueryWrapper<WordContent>().eq("word_id", word.getId())
         );
-        return Map.of(
-                "pool_id", pool.getId(),
-                "word_id", word.getId(),
-                "word_text", word.getWordText(),
-                "pronunciation", wc != null ? wc.getPronunciation() : "",
-                "pos", wc != null ? wc.getPos() : "",
-                "general_meaning", wc != null ? wc.getGeneralMeaning() : "",
-                "pool_status", pool.getPoolStatus(),
-                "review_count", pool.getReviewCount()
-        );
+        Map<String, Object> info = new HashMap<>();
+        info.put("pool_id", pool.getId());
+        info.put("word_id", word.getId());
+        info.put("word_text", word.getWordText());
+        info.put("pronunciation", wc != null ? wc.getPronunciation() : "");
+        info.put("pos", wc != null ? wc.getPos() : "");
+        info.put("general_meaning", wc != null ? wc.getGeneralMeaning() : "");
+        info.put("extended_meaning", wc != null ? wc.getExtendedMeaning() : "");
+        info.put("example_sentence", wc != null ? wc.getExampleSentence() : "");
+        info.put("memory_tip", wc != null ? wc.getMemoryTip() : "");
+        info.put("pool_status", pool.getPoolStatus());
+        info.put("review_count", pool.getReviewCount());
+        return info;
     }
 }

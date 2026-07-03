@@ -15,13 +15,17 @@
     <view class="test-confirm-bar" v-if="canConfirm && !submitted">
       <text class="tcb-info" v-if="wrongCount > 0">本次共错 {{ wrongCount }} 题</text>
       <text class="tcb-info" v-else>全部正确 🎉</text>
-      <button class="tcb-btn" @click="confirmAndClose">确认</button>
+      <button class="tcb-btn" @click="confirmAndClose">提交</button>
+    </view>
+    <view class="test-confirm-bar" v-if="submitted">
+      <text class="tcb-info">{{ resultMsg }}</text>
+      <button class="tcb-btn" @click="goBack">🏠 返回首页</button>
     </view>
   </view>
 </template>
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted, onUnmounted } from "vue"; import { onLoad } from "@dcloudio/uni-app"; import { api } from "@/api"; import TestQuestion from "@/components/TestQuestion.vue";
-const groupId = ref(""); const groupName = ref(""); const questions = ref<any[]>([]); const generating = ref(false); const submitted = ref(false);
+const groupId = ref(""); const groupName = ref(""); const questions = ref<any[]>([]); const generating = ref(false); const submitted = ref(false); const resultMsg = ref("");
 const answeredMap = reactive<Record<string, string>>({});
 const questionStatus = reactive<Record<string, string>>({});
 const currentIndex = ref(0);
@@ -78,16 +82,13 @@ function handleAnswer(qid:string, a:string) {
 async function confirmAndClose() {
   if (submitted.value) return;
   submitted.value = true;
-  const body = { groupId: groupId.value, answers: Object.entries(answeredMap).map(([q,u])=>({questionId:q, userAnswer:u})) };
-  console.log("[TEST-SUBMIT]", JSON.stringify(body));
   try {
-    await api.submitTest(groupId.value, Object.entries(answeredMap).map(([q,u])=>({questionId:q, userAnswer:u})));
+    const res = await api.submitTest(groupId.value, Object.entries(answeredMap).map(([q,u])=>({questionId:q, userAnswer:u})));
+    resultMsg.value = `共 ${questions.value.length} 题，正确 ${res.correct || 0} 题`;
   } catch (_e) {
     uni.showToast({ title: "提交失败", icon: "none" });
     submitted.value = false;
-    return;
   }
-  uni.navigateBack();
 }
 function goBack() { uni.navigateBack(); }
 </script>
