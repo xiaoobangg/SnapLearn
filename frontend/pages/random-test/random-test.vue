@@ -86,9 +86,10 @@ async function confirmAndClose() {
     submitted.value = false;
     return;
   }
-  uni.navigateBack();
+  goHome();
 }
 function goBack() { uni.navigateBack(); }
+function goHome() { uni.switchTab({ url: "/pages/index/index" }); }
 </script>
 <style lang="scss" scoped>
 .test-page { min-height: 100vh; background: $gradient-bg; display: flex; flex-direction: column; }

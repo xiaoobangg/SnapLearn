@@ -186,8 +186,12 @@ public class CheckinController {
                               @com.fasterxml.jackson.annotation.JsonProperty("mark") String mark) {
     }
 
-    public record CompleteRequest(String bankId, int newCount, int reviewCount,
-                                  int knownCount, int fuzzyCount, int unknownCount) {
+    public record CompleteRequest(@com.fasterxml.jackson.annotation.JsonProperty("bankId") String bankId,
+                                  @com.fasterxml.jackson.annotation.JsonProperty("newCount") int newCount,
+                                  @com.fasterxml.jackson.annotation.JsonProperty("reviewCount") int reviewCount,
+                                  @com.fasterxml.jackson.annotation.JsonProperty("knownCount") int knownCount,
+                                  @com.fasterxml.jackson.annotation.JsonProperty("fuzzyCount") int fuzzyCount,
+                                  @com.fasterxml.jackson.annotation.JsonProperty("unknownCount") int unknownCount) {
     }
 
     public record CreateBankRequest(String name, String description) {

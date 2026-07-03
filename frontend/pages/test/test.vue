@@ -20,7 +20,7 @@
     </view>
     <view class="test-confirm-bar" v-if="submitted">
       <text class="tcb-info">{{ resultMsg }}</text>
-      <button class="tcb-btn" @click="goBack">🏠 返回首页</button>
+      <button class="tcb-btn" @click="goHome">🏠 返回首页</button>
     </view>
   </view>
 </template>
@@ -93,6 +93,7 @@ async function confirmAndClose() {
   }
 }
 function goBack() { uni.navigateBack(); }
+function goHome() { uni.switchTab({ url: "/pages/index/index" }); }
 </script>
 <style lang="scss" scoped>
 .test-page { min-height: 100vh; background: $gradient-bg; display: flex; flex-direction: column; }

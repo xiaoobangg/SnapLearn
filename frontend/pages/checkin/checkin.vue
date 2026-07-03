@@ -163,12 +163,25 @@ function handleMark(poolId: string, mark: string, type: "new" | "review") {
   }
   if (mark === "known") markCounts.known++; else if (mark === "fuzzy") markCounts.fuzzy++; else markCounts.unknown++;
   api.markCheckinWord(poolId, mark).catch(() => {});
+  // Auto-complete when all words are marked
+  if (markedCount.value >= totalWords.value && totalWords.value > 0) {
+    setTimeout(() => finishCheckin(), 400);
+  }
 }
 function toggleWordSelect(wordText: string) { const idx = selectedWords.value.indexOf(wordText); if (idx >= 0) selectedWords.value.splice(idx, 1); else selectedWords.value.push(wordText); }
 function onNewSwipe(e: any) { newIdx.value = e.detail.current; }
 function onReviewSwipe(e: any) { reviewIdx.value = e.detail.current; }
 
 async function finishCheckin() {
+  try {
+    await api.completeCheckin(selectedBankId.value, {
+      newCount: newWords.value.length,
+      reviewCount: reviewWords.value.length,
+      knownCount: markCounts.known,
+      fuzzyCount: markCounts.fuzzy,
+      unknownCount: markCounts.unknown,
+    });
+  } catch (_e) { /* ignore */ }
   completed.value = true;
 }
 
