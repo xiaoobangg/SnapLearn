@@ -37,9 +37,14 @@
 
           <view class="calendar-section" v-if="calendarDays.length > 0">
             <text class="cal-title">{{ currentMonth }}</text>
+            <view class="cal-weekdays">
+              <text v-for="wd in weekdays" :key="wd" class="cal-wd">{{ wd }}</text>
+            </view>
             <view class="cal-grid">
               <view v-for="(d, i) in calendarDays" :key="i"
-                    :class="['cal-day', d.checked ? 'cal-checked' : 'cal-empty']" />
+                    :class="['cal-day', d.checked ? 'cal-checked' : 'cal-empty', d.weekend ? 'cal-weekend' : '']">
+                <text class="cal-day-num">{{ d.day || '' }}</text>
+              </view>
             </view>
           </view>
 
@@ -68,7 +73,8 @@ import { ref, onMounted } from "vue";
 import { api } from "@/api";
 
 const stats = ref({ consecutive_days: 0, total_checkin_days: 0, total_pool_words: 0, mastered_count: 0 });
-const calendarDays = ref<{ checked: boolean }[]>([]);
+const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+const calendarDays = ref<{ day: number; checked: boolean; weekend: boolean }[]>([]);
 const currentMonth = ref("");
 const todayDate = ref("");
 const saving = ref(false);
@@ -95,11 +101,12 @@ onMounted(async () => {
     const checkinDays = new Set(cal.checkin_days || []);
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const grid: { checked: boolean }[] = [];
-    for (let i = 0; i < firstDay; i++) grid.push({ checked: false });
+    const grid: { day: number; checked: boolean; weekend: boolean }[] = [];
+    for (let i = 0; i < firstDay; i++) grid.push({ day: 0, checked: false, weekend: false });
     for (let d = 1; d <= daysInMonth; d++) {
       const ds = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      grid.push({ checked: checkinDays.has(ds) });
+      const dow = new Date(now.getFullYear(), now.getMonth(), d).getDay();
+      grid.push({ day: d, checked: checkinDays.has(ds), weekend: dow === 0 || dow === 6 });
     }
     calendarDays.value = grid;
   } catch (_) { /* ignore */ }
@@ -180,14 +187,30 @@ async function saveImage() {
     ctx.setFontSize(14);
     ctx.fillText(currentMonth.value, w / 2, 395);
 
-    const cx = 40, cy = 410, cell = 18, gap = 4;
+    // Weekday headers
+    const wds = ['日','一','二','三','四','五','六'];
+    const cx = 30, cy = 418, cell = 40, gap = 5;
+    ctx.setFontSize(10);
+    ctx.setTextAlign('center');
+    wds.forEach((wd, i) => {
+      ctx.setFillStyle('rgba(255,255,255,0.5)');
+      ctx.fillText(wd, cx + i * (cell + gap) + cell / 2, cy - 18);
+    });
+    // Calendar days
+    ctx.setFontSize(12);
     calendarDays.value.forEach((d, i) => {
       const col = i % 7;
       const row = Math.floor(i / 7);
       const x = cx + col * (cell + gap);
       const y = cy + row * (cell + gap);
-      ctx.setFillStyle(d.checked ? '#FFD700' : 'rgba(255,255,255,0.2)');
-      ctx.fillRect(x, y, cell, cell);
+      if (d.checked) {
+        ctx.setFillStyle('#FFD700');
+        ctx.fillRect(x, y, cell, cell);
+        ctx.setFillStyle('#333');
+      } else {
+        ctx.setFillStyle(d.weekend ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.6)');
+      }
+      if (d.day > 0) ctx.fillText(String(d.day), x + cell / 2, y + cell / 2 + 4);
     });
 
     ctx.setFillStyle('rgba(255,255,255,0.5)');
@@ -240,10 +263,10 @@ async function saveImage() {
 .preview-card {
   width: 630rpx;
   border-radius: 24rpx;
-  overflow: hidden;
   box-shadow: 0 8rpx 40rpx rgba(99, 102, 241, 0.35);
   margin-bottom: 40rpx;
 }
+.card-bg { border-radius: 24rpx; overflow: hidden; }
 
 .card-bg {
   background: linear-gradient(135deg, #6366F1, #8B5CF6, #EC4899);
@@ -356,12 +379,15 @@ async function saveImage() {
   margin-bottom: 12rpx;
 }
 
-.cal-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6rpx;
-}
+.cal-weekdays { display: grid; grid-template-columns: repeat(7, 56rpx); margin: 0 auto 4rpx; width: 392rpx; }
+.cal-wd { text-align: center; font-size: 18rpx; color: rgba(255,255,255,0.5); width: 56rpx; height: 28rpx; display: flex; align-items: center; justify-content: center; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 56rpx); margin: 0 auto; width: 392rpx; }
+.cal-day { width: 56rpx; height: 56rpx; display: flex; align-items: center; justify-content: center; }
+.cal-day-num { font-size: 20rpx; color: rgba(255,255,255,0.6); }
+.cal-day.cal-checked { background: #FFD700; border-radius: 6rpx; }
+.cal-day.cal-checked .cal-day-num { color: #333; font-weight: bold; }
+.cal-day.cal-empty { background: transparent; }
+.cal-day.cal-weekend.cal-empty .cal-day-num { color: rgba(255,255,255,0.25); }
 
 .cal-day {
   width: 32rpx;
