@@ -235,6 +235,16 @@
     });
   }
 </script>
+<script lang="ts">
+export default {
+  onShareAppMessage() {
+    return {
+      title: '拍立学 - 拍照学英语，每天进步一点点',
+      path: '/pages/index/index'
+    };
+  }
+};
+</script>
 
 <style lang="scss" scoped>
 .home {

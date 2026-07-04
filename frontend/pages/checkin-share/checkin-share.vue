@@ -5,7 +5,7 @@
         <view class="card-inner">
           <view class="card-header">
             <view class="logo-wrap"><text class="logo-icon">📸</text></view>
-            <text class="card-logo">SnapLearn</text>
+            <text class="card-logo">拍立学</text>
             <text class="card-subtitle">拍立学 · 每日打卡</text>
           </view>
 
@@ -138,7 +138,7 @@ async function saveImage() {
 
     ctx.setFontSize(28);
     ctx.setFillStyle('#ffffff');
-    ctx.fillText('SnapLearn', w / 2, 90);
+    ctx.fillText('拍立学', w / 2, 90);
     ctx.setFontSize(14);
     ctx.setFillStyle('rgba(255,255,255,0.7)');
     ctx.fillText('拍立学 · 每日打卡', w / 2, 112);
@@ -248,6 +248,16 @@ async function saveImage() {
   }
   saving.value = false;
 }
+</script>
+<script lang="ts">
+export default {
+  onShareAppMessage() {
+    return {
+      title: '拍立学 - 坚持打卡学英语，快来一起进步！',
+      path: '/pages/index/index'
+    };
+  }
+};
 </script>
 
 <style lang="scss" scoped>
