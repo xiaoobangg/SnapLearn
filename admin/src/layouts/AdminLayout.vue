@@ -29,7 +29,7 @@
           <el-icon><Notebook /></el-icon>
           <span>博客</span>
         </el-menu-item>
-        <el-menu-item index="/feedbacks" v-if="isLoggedIn">
+        <el-menu-item index="/feedbacks" v-if="isAdmin">
           <el-icon><ChatDotRound /></el-icon>
           <span>用户反馈</span>
         </el-menu-item>
@@ -159,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive } from "vue";
+import { computed, ref, reactive, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAdminStore } from "@/store/admin";
 import {
@@ -186,6 +186,10 @@ const adminStore = useAdminStore();
 
 const isAdmin = computed(() => adminStore.role === "admin");
 const isLoggedIn = computed(() => adminStore.isLoggedIn);
+
+onMounted(() => {
+  adminStore.loadFromStorage();
+});
 
 const activeMenu = computed(() => {
   const path = route.path;
