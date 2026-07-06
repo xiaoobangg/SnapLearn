@@ -151,6 +151,7 @@ async function handleLogin() {
     const { is_default_pwd } = await adminStore.login(form.username, form.password, captchaK, captchaC);
     ElMessage.success("登录成功");
     sessionStorage.removeItem("login_fails");
+    const target = adminStore.role === "admin" ? "/dashboard" : "/documents";
     if (is_default_pwd) {
       ElMessageBox.confirm(
         "您当前使用的是默认密码，建议立即修改以确保安全。",
@@ -158,10 +159,11 @@ async function handleLogin() {
         { confirmButtonText: "去修改", cancelButtonText: "暂不修改", type: "warning" }
       ).then(() => {
         showChangePwd.value = true;
-      }).catch(() => {});
-    }
-    if (!is_default_pwd) {
-      router.push(adminStore.role === "admin" ? "/dashboard" : "/documents");
+      }).catch(() => {
+        router.push(target);
+      });
+    } else {
+      router.push(target);
     }
   } catch (e: any) {
     failCount.value++;
