@@ -216,7 +216,17 @@
         <div v-if="aiLoading" class="ai-msg assistant"><div class="msg-content typing">...</div></div>
       </div>
       <div class="ai-input">
-        <el-input v-model="aiInput" size="small" placeholder="输入 @ 引用文档..." @keyup.enter="sendAi" @keyup="onAiInputKeyup" @input="onAiInput" :disabled="aiLoading" />
+        <el-input
+          v-model="aiInput"
+          type="textarea"
+          :autosize="{ minRows: 1, maxRows: 6 }"
+          resize="none"
+          placeholder="输入 @ 引用文档... (Enter 发送, Shift+Enter 换行)"
+          @keydown.enter="onInputEnter"
+          @keyup="onAiInputKeyup"
+          @input="onAiInput"
+          :disabled="aiLoading"
+        />
           <div v-if="showMention" class="mention-dropdown">
             <div v-if="mentionDocs.length === 0" class="mention-empty">无匹配文档</div>
             <div v-for="d in mentionDocs" :key="d.id" class="mention-item" @mousedown.prevent="selectMention(d)">
@@ -700,6 +710,13 @@ function onAiInputKeyup(e: KeyboardEvent) {
     mentionDocs.value = docs.value.filter(d => d.docType !== "folder").slice(0, 8);
     showMention.value = true;
   }
+}
+
+// Enter 发送，Shift+Enter 换行
+function onInputEnter(e: KeyboardEvent) {
+  if (e.shiftKey) return;  // Shift+Enter 换行，保留默认行为
+  e.preventDefault();
+  sendAi();
 }
 
 function selectMention(d: DocItem) {
@@ -1352,11 +1369,41 @@ watch(aiMessages, () => scrollAi(), { deep: true });
   
   .ai-input {
     display: flex;
+    align-items: flex-end;  // 底部对齐，让发送按钮始终在底部
     gap: 8px;
     padding: 12px;
     border-top: 1px solid $card-border;
     background: $card-bg;
     position: relative;
+
+    :deep(.el-textarea) {
+      flex: 1;
+      .el-textarea__inner {
+        min-height: 32px !important;
+        max-height: 180px !important;
+        padding: 6px 12px;
+        font-size: 13px;
+        line-height: 1.5;
+        border-radius: $radius-md;
+        resize: none;
+        box-shadow: 0 0 0 1px $card-border inset;
+        transition: box-shadow 0.2s ease;
+
+        &:hover {
+          box-shadow: 0 0 0 1px rgba($primary-color, 0.4) inset;
+        }
+
+        &:focus {
+          box-shadow: 0 0 0 1px $primary-color inset;
+        }
+      }
+    }
+
+    .el-button {
+      flex-shrink: 0;
+      height: 32px;
+      min-width: 60px;
+    }
   }
 
   .mention-dropdown {

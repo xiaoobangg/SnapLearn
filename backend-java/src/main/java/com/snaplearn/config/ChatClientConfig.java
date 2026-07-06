@@ -230,7 +230,7 @@ public class ChatClientConfig {
      * 自定义 DeepSeekApi 实例，关闭思考模式以降低成本。
      * <p>
      * 通过请求拦截器自动注入 {@code thinking: disabled} 参数（如果请求体中未显式设置），
-     * 并配置连接超时 20s、读取超时 120s（适配大模型慢响应）。
+     * 并配置连接超时 20s、读取超时 240s（适配大模型慢响应）。
      *
      * @param apiKey            DeepSeek API Key
      * @param baseUrl           DeepSeek API Base URL
@@ -249,7 +249,7 @@ public class ChatClientConfig {
         // 1. 设置超时时间
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(20_000); // 连接超时 10 秒
-        requestFactory.setReadTimeout(120_000);   // 读取超时 120 秒 (大模型生成可能较慢)
+        requestFactory.setReadTimeout(240_000);   // 读取超时 120 秒 (大模型生成可能较慢)
 
         // 在原有的 builder 基础上添加拦截器
         RestClient.Builder builder = restClientBuilder.requestInterceptor((request, body, execution) -> {
