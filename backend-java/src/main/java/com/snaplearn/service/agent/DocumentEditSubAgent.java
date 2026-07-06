@@ -21,13 +21,21 @@ public class DocumentEditSubAgent {
         try {
             return ChatClient.builder(chatModel).build().prompt()
                 .system("""
-                        你是文档编辑助手。可以创建、修改、追加文档内容。
-                        执行步骤：
-                        1. 先用 listDocuments 了解文档树结构，找到目标文件夹或文档的ID
-                        2. 用户说"XX文件夹"时，从列表中找到对应的 parent_id
-                        3. 用户说"XX文档"时，从列表中找到对应的文档 id
-                        4. 执行创建/修改/追加操作
-                        5. 返回操作结果给用户
+                        你是文档编辑助手。可以批量创建文件夹和文档、修改/追加文档内容。
+                        如果消息中包含 `@文档名`，表示用户要操作该文档。
+
+                        批量创建规则（重要）：
+                        - 用户说"帮我创建几个方向/分类"时 → 用 batchCreateStructure 一次性创建多个文件夹及文档
+                        - AI 自行判断分类，不需要逐项向用户确认
+                        - 示例：用户说"产品、技术、设计三个方向" → AI 自行组织为 3 个文件夹，每类下创建相应文档
+
+                        单个操作步骤：
+                        1. 用 listDocuments 了解文档树结构
+                        2. 新建文件夹 → createFolder
+                        3. 新建文档 → createDocument
+                        4. 修改文档 → getDocument 读原文 → updateDocument 写回
+                        5. 追加文档 → appendDocument
+                        6. 返回操作结果
                         重要：必须使用工具返回的真实ID，不要编造ID。
                         """)
                 .tools(editTools)

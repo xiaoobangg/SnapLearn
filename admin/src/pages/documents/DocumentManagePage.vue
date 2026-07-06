@@ -179,27 +179,29 @@
           <el-icon :size="16"><DArrowRight v-if="showAiPanel" /><DArrowLeft v-else /></el-icon>
         </el-button>
         <div class="ai-toolbar">
-          <el-dropdown trigger="click" @command="onConvCommand">
-            <el-button size="small" style="width:150px;text-align:left;overflow:hidden;text-overflow:ellipsis;">
-              {{ currentConvTitle || '选择会话' }}
-              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item v-if="aiConvs.length === 0" disabled>暂无会话</el-dropdown-item>
-                <el-dropdown-item v-for="c in aiConvs" :key="c.chat_id" :command="{ type: 'select', id: c.chat_id }"
-                  :class="{ 'is-active': currentConvId === c.chat_id }">
-                  <span class="conv-title">{{ c.title }}</span>
-                  <button class="conv-del-btn" @click.stop="delConv(c.chat_id)" title="删除会话">
-                    <el-icon :size="14"><Delete /></el-icon>
-                  </button>
-                </el-dropdown-item>
-                <el-dropdown-item divided command="{ type: 'new' }">
-                  <el-icon :size="14"><Plus /></el-icon> 新建会话
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <div class="ai-toolbar-left">
+            <el-dropdown trigger="click" @command="onConvCommand" popper-class="conv-dropdown-popper">
+              <el-button size="small" style="width:150px;text-align:left;overflow:hidden;text-overflow:ellipsis;">
+                {{ currentConvTitle || '选择会话' }}
+                <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-if="aiConvs.length === 0" disabled>暂无会话</el-dropdown-item>
+                  <el-dropdown-item v-for="c in aiConvs" :key="c.chat_id" :command="{ type: 'select', id: c.chat_id }"
+                    :class="{ 'is-active': currentConvId === c.chat_id }">
+                    <span class="conv-title">{{ c.title }}</span>
+                    <button class="conv-del-btn" @click.stop="delConv(c.chat_id)" title="删除会话">
+                      <el-icon :size="14"><Delete /></el-icon>
+                    </button>
+                  </el-dropdown-item>
+                  <el-dropdown-item divided :command="{ type: 'new' }">
+                    <el-icon :size="14"><Plus /></el-icon> 新建会话
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
           <button class="model-toggle-btn" @click="toggleAiModel" :class="{ active: aiModel === 'deepseek' }">
             <span class="model-icon ds-icon">DS</span>
             <span class="model-icon qw-icon">QW</span>
@@ -214,7 +216,21 @@
         <div v-if="aiLoading" class="ai-msg assistant"><div class="msg-content typing">...</div></div>
       </div>
       <div class="ai-input">
-        <el-input v-model="aiInput" size="small" placeholder="搜索/创建/修改文档..." @keyup.enter="sendAi" :disabled="aiLoading" />
+        <el-input v-model="aiInput" size="small" placeholder="输入 @ 引用文档..." @keyup.enter="sendAi" @keyup="onAiInputKeyup" @input="onAiInput" :disabled="aiLoading" />
+          <div v-if="showMention" class="mention-dropdown">
+            <div v-if="mentionDocs.length === 0" class="mention-empty">无匹配文档</div>
+            <div v-for="d in mentionDocs" :key="d.id" class="mention-item" @mousedown.prevent="selectMention(d)">
+              <el-icon :size="14"><Document /></el-icon>
+              <span>{{ d.title }}</span>
+            </div>
+          </div>
+          <div v-if="showMention" class="mention-dropdown">
+            <div v-if="mentionDocs.length === 0" class="mention-empty">无匹配文档</div>
+            <div v-for="d in mentionDocs" :key="d.id" class="mention-item" @click="selectMention(d)">
+              <el-icon :size="14"><Document /></el-icon>
+              <span>{{ d.title }}</span>
+            </div>
+          </div>
         <el-button size="small" type="primary" @click="sendAi" :loading="aiLoading">发送</el-button>
       </div>
     </div>
@@ -654,8 +670,44 @@ const aiMessages = ref<{ role: string; content: string; tool?: string }[]>([]);
 const aiLoading = ref(false);
 const aiMsgs = ref<HTMLElement>();
 const aiConvs = ref<any[]>([]);
-const currentConvId = ref("");
+const currentConvId = ref<string>("");
+const isCreatingNew = ref(false);  // 标记是否正在新建会话，避免 loadAiConvs 自动选中最新会话
 const aiModel = ref<"deepseek" | "dashscope">("deepseek");
+
+// ===== @ 文档引用 =====
+const showMention = ref(false);
+const mentionDocs = ref<DocItem[]>([]);
+const mentionQuery = ref("");
+
+function onAiInput() {
+  const val = aiInput.value;
+  const atIdx = val.lastIndexOf("@");
+  if (atIdx >= 0 && (atIdx === 0 || val[atIdx - 1] === " ")) {
+    mentionQuery.value = val.slice(atIdx + 1).toLowerCase();
+    mentionDocs.value = docs.value
+      .filter(d => d.docType !== "folder" && d.title.toLowerCase().includes(mentionQuery.value))
+      .slice(0, 8);
+    showMention.value = true;
+  } else {
+    showMention.value = false;
+  }
+}
+
+function onAiInputKeyup(e: KeyboardEvent) {
+  if (e.key === "Escape") showMention.value = false;
+  if (e.key === "@") {
+    mentionQuery.value = "";
+    mentionDocs.value = docs.value.filter(d => d.docType !== "folder").slice(0, 8);
+    showMention.value = true;
+  }
+}
+
+function selectMention(d: DocItem) {
+  const val = aiInput.value;
+  const atIdx = val.lastIndexOf("@");
+  aiInput.value = val.slice(0, atIdx) + `@${d.title} `;
+  showMention.value = false;
+}
 
 async function loadAiConvs() {
   try {
@@ -663,8 +715,8 @@ async function loadAiConvs() {
     const token = localStorage.getItem("admin_token") || "";
     const resp = await fetch(`${baseUrl}/api/v1/chat/conversations`, { headers: { Authorization: `Bearer ${token}` } });
     aiConvs.value = await resp.json();
-    // 默认选中最新会话
-    if (aiConvs.value.length > 0 && !currentConvId.value) {
+    // 仅在非新建会话且无当前会话时，默认选中最新会话
+    if (aiConvs.value.length > 0 && !currentConvId.value && !isCreatingNew.value) {
       switchConv(aiConvs.value[0].chat_id);
     }
   } catch { /* ignore */ }
@@ -700,7 +752,13 @@ async function delConv(chatId: string) {
 }
 
 async function switchConv(chatId: string) { if (!chatId) { newAiConv(); return; } currentConvId.value = chatId; loadAiHistory(chatId); }
-async function newAiConv() { currentConvId.value = ""; aiMessages.value = [{ role: "assistant", content: "你好！我是文档助手。" }]; loadAiConvs(); }
+async function newAiConv() { 
+  isCreatingNew.value = true;   // 标记正在新建，阻止 loadAiConvs 自动选中
+  currentConvId.value = ""; 
+  aiMessages.value = [{ role: "assistant", content: "你好！我是文档助手。" }]; 
+  await loadAiConvs(); 
+  isCreatingNew.value = false;  // 恢复标记
+}
 async function deleteAiConv() {
   if (!currentConvId.value) return;
   try {
@@ -733,6 +791,7 @@ async function sendAi() {
     const reader = resp.body?.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let isFirstLine = true;
     const last = aiMessages.value[aiMessages.value.length - 1];
     while (reader) {
       const { done, value } = await reader.read();
@@ -742,11 +801,15 @@ async function sendAi() {
       buffer = lines.pop() || "";
       for (const line of lines) {
         if (line.startsWith("data:")) {
-          const data = line.slice(5).trim();
-          if (data.startsWith("[DONE]")) continue;
+          const data = line.slice(5).replace(/^ /, "");
+          if (data === "[DONE]") continue;
+          if (!isFirstLine) last.content += "\n";
           if (data.startsWith("{")) {
             try { const p = JSON.parse(data); if (p.chat_id) currentConvId.value = p.chat_id; } catch { last.content += data; }
           } else { last.content += data; }
+          isFirstLine = false;
+        } else if (line === "") {
+          isFirstLine = true;
         }
       }
       scrollAi();
@@ -756,7 +819,14 @@ async function sendAi() {
   aiLoading.value = false;
 }
 
-onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assistant", content: "你好！我是文档助手。可以帮你搜索、创建或修改文档。" }]; });
+onMounted(() => { 
+  loadDocs(); 
+  loadAiConvs(); 
+  aiMessages.value = [{ role: "assistant", content: "你好！我是文档助手。可以帮你搜索、创建或修改文档。" }]; 
+});
+
+// 监听消息变化，自动滚动到底部
+watch(aiMessages, () => scrollAi(), { deep: true });
 </script>
 
 <style lang="scss" scoped>
@@ -772,7 +842,7 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
   position: fixed;
   z-index: 9999;
   min-width: 160px;
-  background: #FFFFFF;
+  background: $card-bg;
   border: 1px solid $card-border;
   border-radius: $radius-md;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -787,10 +857,11 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
     font-size: 13px;
     color: $text-primary;
     cursor: pointer;
-    transition: background 0.12s;
+    transition: background $transition-fast;
 
-    &:hover { background: #F3F4F6; }
-    &.danger { color: $accent-red;
+    &:hover { background: $sidebar-hover; }
+    &.danger { 
+      color: $accent-red;
       &:hover { background: rgba($accent-red, 0.06); }
     }
     .ctx-shortcut {
@@ -826,19 +897,30 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
     align-items: center;
     justify-content: space-between;
     padding: 14px 16px;
+    border-bottom: 1px solid $card-border;
     h4 {
       margin: 0;
       font-size: 15px;
       font-weight: 700;
       color: $text-primary;
+      display: flex; 
+      align-items: center; 
+      gap: 8px;
+      &::before { 
+        content: ""; 
+        width: 4px; 
+        height: 16px; 
+        background: linear-gradient(180deg, $primary-color, $accent-purple); 
+        border-radius: 2px; 
+      }
     }
     .panel-actions {
       display: flex;
-      gap: 2px;
+      gap: 4px;
     }
   }
   .search-box {
-    padding: 0 12px 10px;
+    padding: 10px 12px;
   }
   .tree-wrap {
     flex: 1;
@@ -853,28 +935,30 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
   }
 }
 
-// ===== Tree Node (语雀风格) =====
+// ===== Tree Node =====
 .tree-node {
   display: flex;
   align-items: center;
-  padding: 6px 10px;
+  padding: 8px 12px;
   font-size: 14px;
   cursor: pointer;
   color: $text-primary;
-  transition: background 0.15s;
-  border-radius: 0;
-  margin: 0;
+  transition: all $transition-fast;
+  border-radius: $radius-sm;
+  margin: 0 4px;
   position: relative;
   user-select: none;
 
   &:hover {
-    background: #EBEDF0;
+    background: $sidebar-hover;
     .node-tail { opacity: 1; }
   }
   &.active {
-    background: #E8EAED;
-    font-weight: 500;
+    background: $sidebar-active;
+    font-weight: 600;
+    color: $primary-color;
     .node-tail { opacity: 1; }
+    .node-icon, .node-arrow { color: $primary-color; }
   }
   &.drag-over {
     background: #DBEAFE;
@@ -890,6 +974,7 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
     justify-content: center;
     flex-shrink: 0;
     color: $text-muted;
+    transition: color $transition-fast;
   }
   .node-icon {
     width: 22px;
@@ -898,13 +983,17 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
     justify-content: center;
     flex-shrink: 0;
     color: $text-muted;
-    margin-right: 2px;
+    margin-right: 6px;
+    transition: color $transition-fast;
   }
   .node-edit-input {
     flex: 1;
     :deep(.el-input__wrapper) {
       padding: 0 8px;
       height: 26px;
+      background: transparent;
+      box-shadow: none;
+      border: 1px solid $primary-color;
     }
   }
   .node-title {
@@ -922,7 +1011,7 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
   }
   .node-tail {
     opacity: 0;
-    transition: opacity 0.15s;
+    transition: opacity $transition-fast;
     display: flex;
     align-items: center;
     gap: 2px;
@@ -930,17 +1019,18 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
     margin-left: 4px;
 
     .tail-icon {
-      width: 24px;
-      height: 24px;
+      width: 26px;
+      height: 26px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
+      border-radius: $radius-sm;
       color: $text-muted;
       font-size: 15px;
       cursor: pointer;
+      transition: all $transition-fast;
       &:hover {
-        background: rgba($text-primary, 0.06);
+        background: rgba($text-primary, 0.08);
         color: $text-primary;
       }
     }
@@ -1052,7 +1142,7 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: width 0.25s ease, min-width 0.25s ease;
+  transition: width $transition-normal, min-width $transition-normal;
 
   &.collapsed {
     width: 36px;
@@ -1069,36 +1159,69 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
     padding: 14px 16px;
     border-bottom: 1px solid $card-border;
     h4 {
-      margin: 0; font-size: 15px; font-weight: 600; color: $text-primary;
-      display: flex; align-items: center; gap: 8px;
-      &::before { content: ""; width: 4px; height: 16px; background: linear-gradient(180deg, $primary-color, $accent-purple); border-radius: 2px; }
+      margin: 0; 
+      font-size: 15px; 
+      font-weight: 600; 
+      color: $text-primary;
+      display: flex; 
+      align-items: center; 
+      gap: 8px;
+      &::before { 
+        content: ""; 
+        width: 4px; 
+        height: 16px; 
+        background: linear-gradient(180deg, $primary-color, $accent-purple); 
+        border-radius: 2px; 
+      }
     }
     .panel-toggle {
-      position: absolute; right: 4px; top: 8px;
+      position: absolute; 
+      right: 4px; 
+      top: 8px;
     }
-    .ai-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-    .conv-title { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-    :deep(.el-dropdown-menu__item.is-active) { color: $primary-color; font-weight: 500; }
-    :deep(.el-dropdown-menu__item) { display: flex; align-items: center; gap: 8px; }
+    .ai-toolbar { 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 10px;
+
+      .ai-toolbar-left {
+        display: flex;
+        align-items: center;
+        flex: 1;
+      }
+    }
+    .conv-title { 
+      flex: 1; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+    }
+    :deep(.el-dropdown-menu__item.is-active) { 
+      color: $primary-color; 
+      font-weight: 600; 
+    }
+    /* el-dropdown-menu__item 的布局样式见文件末尾非 scoped 块（Teleport 到 body） */
 
     .model-toggle-btn {
+      flex-shrink: 0;
       display: flex;
       align-items: center;
       gap: 2px;
-      padding: 4px 6px;
+      padding: 3px 4px;
       border-radius: 20px;
-      background: #F3F4F6;
-      border: 1px solid #E5E7EB;
+      background: #F5F7FA;
+      border: 1px solid #E4E7ED;
       cursor: pointer;
       transition: all 0.2s ease;
       position: relative;
-      width: 72px;
+      width: 76px;
       height: 28px;
       overflow: hidden;
 
       &:hover {
         background: #EEF2FF;
-        border-color: rgba($primary-color, 0.3);
+        border-color: rgba(77, 107, 254, 0.3);
       }
 
       .model-icon {
@@ -1106,28 +1229,34 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 12px;
-        font-weight: 600;
-        color: #6B7280;
+        font-size: 11px;
+        font-weight: 700;
+        color: #909399;
         transition: all 0.2s ease;
         z-index: 1;
         position: relative;
+        height: 20px;
+        border-radius: 10px;
 
-        &.ds-icon { color: #10B981; }
-        &.qw-icon { color: #F59E0B; }
+        &.ds-icon { 
+          color: #67C23A; 
+        }
+        &.qw-icon { 
+          color: #E6A23C; 
+        }
       }
 
       &::after {
         content: '';
         position: absolute;
-        top: 2px;
-        left: 2px;
-        width: 32px;
-        height: 22px;
+        top: 3px;
+        left: 3px;
+        width: 34px;
+        height: 20px;
         background: #FFFFFF;
-        border-radius: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
       &.active::after {
@@ -1135,8 +1264,8 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
       }
 
       &.active {
-        background: linear-gradient(135deg, rgba($primary-color, 0.08), rgba($accent-purple, 0.08));
-        border-color: rgba($primary-color, 0.2);
+        background: linear-gradient(135deg, rgba(77, 107, 254, 0.08), rgba(139, 92, 246, 0.08));
+        border-color: rgba(77, 107, 254, 0.25);
       }
     }
 
@@ -1147,12 +1276,12 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 6px;
+      border-radius: $radius-sm;
       border: none;
       background: transparent;
-      color: #9CA3AF;
+      color: $text-muted;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all $transition-fast;
 
       &:hover {
         background: rgba($accent-red, 0.08);
@@ -1164,21 +1293,168 @@ onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assist
       }
     }
   }
-  .ai-messages { flex: 1; overflow-y: auto; padding: 12px; background: #F9FAFB; }
+  
+  .ai-messages { 
+    flex: 1; 
+    overflow-y: auto; 
+    padding: 12px; 
+    background: #F9FAFB; 
+  }
+  
   .ai-msg {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
+    
     &.user {
       text-align: right;
-      .msg-content { background: $primary-color; color: #FFF; display: inline-block; padding: 10px 14px; border-radius: $radius-lg; border-bottom-right-radius: 4px; max-width: 85%; text-align: left; font-size: 13px; white-space: pre-wrap; box-shadow: 0 2px 6px rgba(77,107,254,0.2); }
+      .msg-content { 
+        background: $primary-color; 
+        color: #FFF; 
+        display: inline-block; 
+        padding: 10px 14px; 
+        border-radius: $radius-lg; 
+        border-bottom-right-radius: 4px; 
+        max-width: 85%; 
+        text-align: left; 
+        font-size: 13px; 
+        white-space: pre-wrap; 
+        box-shadow: 0 2px 6px rgba(77,107,254,0.2); 
+      }
     }
+    
     &.assistant {
       text-align: left;
-      .msg-content { background: $card-bg; display: inline-block; padding: 10px 14px; border-radius: $radius-lg; border-bottom-left-radius: 4px; max-width: 85%; box-shadow: 0 1px 3px rgba(0,0,0,0.04); font-size: 13px; white-space: pre-wrap; color: $text-primary; border: 1px solid $card-border;
+      .msg-content { 
+        background: $card-bg; 
+        display: inline-block; 
+        padding: 10px 14px; 
+        border-radius: $radius-lg; 
+        border-bottom-left-radius: 4px; 
+        max-width: 85%; 
+        box-shadow: $card-shadow;
+        font-size: 13px; 
+        white-space: pre-wrap; 
+        color: $text-primary; 
+        border: 1px solid $card-border;
         &.typing { color: $text-muted; }
       }
     }
   }
-  .msg-tool { font-size: 12px; color: $accent-green; margin-top: 4px; padding: 4px 10px; background: rgba(16,185,129,0.1); border-radius: $radius-sm; display: inline-block; }
-  .ai-input { display: flex; gap: 8px; padding: 12px; border-top: 1px solid $card-border; background: $card-bg; }
+  
+  .msg-tool { 
+    font-size: 12px; 
+    color: $accent-green; 
+    margin-top: 4px; 
+    padding: 4px 10px; 
+    background: rgba(16,185,129,0.1); 
+    border-radius: $radius-sm; 
+    display: inline-block; 
+  }
+  
+  .ai-input {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid $card-border;
+    background: $card-bg;
+    position: relative;
+  }
+
+  .mention-dropdown {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    margin-bottom: 4px;
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.08);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+  }
+
+  .mention-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #303133;
+    &:hover { background: #F3F4F6; }
+  }
+
+  .mention-empty {
+    padding: 12px;
+    font-size: 13px;
+    color: #909399;
+    text-align: center;
+  }
+}
+</style>
+
+<!-- 非 scoped：el-dropdown-menu 通过 Teleport 渲染到 body，scoped 样式无法穿透 -->
+<style lang="scss">
+.conv-dropdown-popper {
+  .el-dropdown-menu__item {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px;
+
+    .conv-title {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+      color: #303133;
+    }
+
+    .conv-del-btn {
+      flex-shrink: 0;
+      margin-left: auto;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      color: #909399;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      opacity: 0;
+      visibility: hidden;
+
+      &:hover {
+        background: rgba(245, 108, 108, 0.1);
+        color: #F56C6C;
+        opacity: 1;
+      }
+
+      &:active {
+        background: rgba(245, 108, 108, 0.18);
+      }
+    }
+
+    &:hover .conv-del-btn {
+      opacity: 0.7;
+      visibility: visible;
+    }
+
+    &.is-active {
+      color: #4D6BFE;
+      font-weight: 600;
+      background: rgba(77, 107, 254, 0.06);
+
+      .conv-title {
+        color: #4D6BFE;
+      }
+    }
+  }
 }
 </style>

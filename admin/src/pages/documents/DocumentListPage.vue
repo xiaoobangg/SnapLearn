@@ -23,34 +23,36 @@
       <el-button size="small" @click="load">搜索</el-button>
     </div>
 
-    <el-table :data="items" stripe v-loading="loading" @selection-change="onSelect">
-      <el-table-column type="selection" width="50" />
-      <el-table-column prop="title" label="标题" min-width="200" />
-      <el-table-column prop="category" label="分类" width="100" align="center">
-        <template #default="{ row }">
-          <span v-if="row.category">{{ row.category }}</span>
-          <span v-else style="color:#c0c4cc">-</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="status" label="状态" width="90" align="center">
-        <template #default="{ row }">
-          <el-tag v-if="row.status==='draft'" size="small" type="info">草稿</el-tag>
-          <el-tag v-else-if="row.status==='published'" size="small" type="success">已发布</el-tag>
-          <el-tag v-else-if="row.status==='archived'" size="small" type="warning">已归档</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="updatedAt" label="更新时间" width="170" align="center">
-        <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
-      </el-table-column>
-      <el-table-column label="操作" width="280" align="center">
-        <template #default="{ row }">
-          <el-button size="small" link type="primary" @click="openEdit(row)">编辑</el-button>
-          <el-button v-if="row.status==='draft'" size="small" link type="success" @click="doPublish(row)">发布</el-button>
-          <el-button v-if="row.status==='published'" size="small" link type="warning" @click="doUnpublish(row)">撤销</el-button>
-          <el-button size="small" link type="danger" @click="doDelete(row)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <div class="table-wrap">
+      <el-table :data="items" stripe v-loading="loading" @selection-change="onSelect">
+        <el-table-column type="selection" width="50" />
+        <el-table-column prop="title" label="标题" min-width="200" />
+        <el-table-column prop="category" label="分类" width="100" align="center">
+          <template #default="{ row }">
+            <span v-if="row.category">{{ row.category }}</span>
+            <span v-else :style="{ color: '$text-muted' }">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.status==='draft'" size="small" type="info">草稿</el-tag>
+            <el-tag v-else-if="row.status==='published'" size="small" type="success">已发布</el-tag>
+            <el-tag v-else-if="row.status==='archived'" size="small" type="warning">已归档</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="updatedAt" label="更新时间" width="170" align="center">
+          <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="280" align="center">
+          <template #default="{ row }">
+            <el-button size="small" link type="primary" @click="openEdit(row)">编辑</el-button>
+            <el-button v-if="row.status==='draft'" size="small" link type="success" @click="doPublish(row)">发布</el-button>
+            <el-button v-if="row.status==='published'" size="small" link type="warning" @click="doUnpublish(row)">撤销</el-button>
+            <el-button size="small" link type="danger" @click="doDelete(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
 
     <!-- 分页 -->
     <div class="pager-wrap" v-if="total > size">
@@ -300,13 +302,13 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-
 .page-wrap { 
   background: $card-bg;
   border-radius: $radius-lg;
-  padding: 24px;
+  padding: 28px;
   border: 1px solid $card-border;
   box-shadow: $card-shadow;
+  transition: box-shadow $transition-normal;
 
   &:hover {
     box-shadow: $card-shadow-hover;
@@ -317,12 +319,12 @@ onMounted(() => {
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 
   h3 { 
     margin: 0; 
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 20px;
+    font-weight: 700;
     color: $text-primary;
     display: flex;
     align-items: center;
@@ -331,59 +333,78 @@ onMounted(() => {
     &::before {
       content: "";
       width: 4px;
-      height: 20px;
+      height: 24px;
       background: linear-gradient(180deg, $primary-color, $accent-purple);
       border-radius: 2px;
     }
   } 
+
+  .page-actions {
+    display: flex;
+    gap: 8px;
+  }
 }
 
 .filter-bar { 
   display: flex; 
   gap: 12px; 
-  margin-bottom: 20px;
-  padding: 16px;
+  margin-bottom: 24px;
+  padding: 16px 20px;
   background: #F9FAFB;
   border-radius: $radius-md;
   border: 1px solid $card-border;
+  align-items: center;
+}
+
+.table-wrap {
+  border-radius: $radius-lg;
+  overflow: hidden;
+  border: 1px solid $card-border;
+  box-shadow: $card-shadow;
+
+  :deep(.el-table) {
+    border: none;
+    border-radius: 0;
+  }
 }
 
 .pager-wrap { 
-  margin-top: 20px; 
+  margin-top: 24px; 
   display: flex; 
   justify-content: flex-end;
+  align-items: center;
 }
 
 .batch-bar { 
   margin-top: 16px;
-  padding: 12px 16px;
+  padding: 14px 20px;
   background: rgba(16, 185, 129, 0.06);
   border-radius: $radius-md;
   border: 1px solid rgba(16, 185, 129, 0.2);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
 .ai-dialog {
   .ai-chat-wrap { 
     display: flex; 
     flex-direction: column; 
-    height: 450px;
+    height: 500px;
   }
 
   .ai-messages { 
     flex: 1; 
     overflow-y: auto; 
-    padding: 12px;
+    padding: 16px;
     background: #F9FAFB; 
-    border-radius: $radius-md; 
+    border-radius: $radius-lg; 
     margin-bottom: 16px;
     border: 1px solid $card-border;
   }
 
   .ai-msg { 
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 
     &.user { 
       text-align: right;
@@ -395,10 +416,11 @@ onMounted(() => {
         padding: 10px 14px; 
         border-radius: $radius-lg;
         border-bottom-right-radius: 4px;
-        max-width: 80%; 
+        max-width: 85%; 
         text-align: left;
         font-size: 13px;
         box-shadow: 0 2px 6px rgba(77, 107, 254, 0.2);
+        white-space: pre-wrap;
       } 
     }
 
@@ -411,8 +433,8 @@ onMounted(() => {
         padding: 10px 14px; 
         border-radius: $radius-lg;
         border-bottom-left-radius: 4px;
-        max-width: 80%; 
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04); 
+        max-width: 85%; 
+        box-shadow: $card-shadow;
         white-space: pre-wrap;
         font-size: 13px;
         color: $text-primary;

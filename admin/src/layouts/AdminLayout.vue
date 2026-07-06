@@ -21,7 +21,7 @@
           <el-icon><Odometer /></el-icon>
           <span>仪表盘</span>
         </el-menu-item>
-        <el-menu-item index="/documents">
+        <el-menu-item index="/documents" v-if="isLoggedIn">
           <el-icon><Document /></el-icon>
           <span>文档管理</span>
         </el-menu-item>
@@ -96,30 +96,35 @@
           </div>
         </div>
         <div class="header-right">
-          <div class="header-actions">
-            <div class="status-indicator">
-              <span class="status-dot"></span>
-              <span class="status-text">在线</span>
+          <template v-if="isLoggedIn">
+            <div class="header-actions">
+              <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">在线</span>
+              </div>
             </div>
-          </div>
-          <el-dropdown @command="handleCommand">
-            <span class="user-info">
-              <div class="user-avatar">
-                <el-icon><User /></el-icon>
-              </div>
-              <div class="user-detail">
-                <span class="user-name">{{ adminStore.username }}</span>
-                <span class="user-role">{{ isAdmin ? '管理员' : '普通用户' }}</span>
-              </div>
-              <el-icon><ArrowDown /></el-icon>
-            </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="changePwd">修改密码</el-dropdown-item>
-                <el-dropdown-item command="logout">退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+            <el-dropdown @command="handleCommand">
+              <span class="user-info">
+                <div class="user-avatar">
+                  <el-icon><User /></el-icon>
+                </div>
+                <div class="user-detail">
+                  <span class="user-name">{{ adminStore.username }}</span>
+                  <span class="user-role">{{ isAdmin ? '管理员' : '普通用户' }}</span>
+                </div>
+                <el-icon><ArrowDown /></el-icon>
+              </span>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="changePwd">修改密码</el-dropdown-item>
+                  <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </template>
+          <template v-else>
+            <el-button size="small" type="primary" @click="$router.push('/login')">登录</el-button>
+          </template>
         </div>
       </el-header>
 
@@ -176,6 +181,7 @@ const router = useRouter();
 const adminStore = useAdminStore();
 
 const isAdmin = computed(() => adminStore.role === "admin");
+const isLoggedIn = computed(() => adminStore.isLoggedIn);
 
 const activeMenu = computed(() => {
   const path = route.path;
@@ -234,6 +240,14 @@ async function doChangePwd() {
   border-right: 1px solid #E5E7EB;
   overflow: hidden;
   position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-menu {
+  flex: 1;
+  overflow-y: auto;
+  border-right: none;
 }
 
 .logo-wrapper {

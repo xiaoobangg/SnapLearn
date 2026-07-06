@@ -4,7 +4,7 @@
     <div class="left-panel">
       <div class="panel-head">
         <h4>文档导航</h4>
-        <el-switch v-model="onlyMine" size="small" active-text="我的" @change="onOnlyMineChange" />
+        <el-switch v-if="isLoggedIn" v-model="onlyMine" size="small" active-text="我的" @change="onOnlyMineChange" />
       </div>
       <div class="tree-wrap">
         <div v-for="node in docTree" :key="node.id"
@@ -86,6 +86,7 @@ const docs = ref<DocItem[]>([]);
 const selFolder = ref("");
 const selFolderTitle = ref("");
 const onlyMine = ref(false);
+const isLoggedIn = ref(!!localStorage.getItem("admin_token"));
 
 function getMyUserId() {
   try { return JSON.parse(localStorage.getItem("admin_info") || "{}").id || ""; } catch { return ""; }
@@ -229,6 +230,7 @@ async function sendChat() {
     const reader = resp.body?.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let isFirstLine = true;
     const lastMsg = chatMessages.value[chatMessages.value.length - 1];
     while (reader) {
       const { done, value } = await reader.read();
@@ -238,9 +240,13 @@ async function sendChat() {
       buffer = lines.pop() || "";
       for (const line of lines) {
         if (line.startsWith("data:")) {
-          const data = line.slice(5).trim();
+          const data = line.slice(5).replace(/^ /, "");
           if (data === "[DONE]") continue;
+          if (!isFirstLine) lastMsg.content += "\n";
           lastMsg.content += data;
+          isFirstLine = false;
+        } else if (line === "") {
+          isFirstLine = true;
         }
       }
       scrollChat();
@@ -269,7 +275,7 @@ onMounted(async () => {
   width: 260px;
   min-width: 220px;
   background: #FAFBFC;
-  border-right: 1px solid #E5E7EB;
+  border-right: 1px solid $card-border;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -279,8 +285,23 @@ onMounted(async () => {
     align-items: center;
     justify-content: space-between;
     padding: 14px 16px;
-    border-bottom: 1px solid #E5E7EB;
-    h4 { margin: 0; font-size: 15px; font-weight: 700; color: #303133; }
+    border-bottom: 1px solid $card-border;
+    h4 { 
+      margin: 0; 
+      font-size: 15px; 
+      font-weight: 700; 
+      color: $text-primary; 
+      display: flex; 
+      align-items: center; 
+      gap: 8px;
+      &::before { 
+        content: ""; 
+        width: 4px; 
+        height: 16px; 
+        background: linear-gradient(180deg, $primary-color, $accent-purple); 
+        border-radius: 2px; 
+      }
+    }
     :deep(.el-switch) { flex-shrink: 0; .el-switch__label { font-size: 11px; } }
   }
   .tree-wrap {
@@ -290,7 +311,7 @@ onMounted(async () => {
   }
   .empty-tree {
     text-align: center;
-    color: #909399;
+    color: $text-muted;
     font-size: 13px;
     padding: 40px 20px;
   }
@@ -299,26 +320,34 @@ onMounted(async () => {
 .tree-node {
   display: flex;
   align-items: center;
-  padding: 6px 10px;
+  padding: 8px 12px;
   font-size: 14px;
   cursor: pointer;
-  color: #303133;
-  transition: background 0.15s;
+  color: $text-primary;
+  transition: all $transition-fast;
   user-select: none;
+  border-radius: $radius-sm;
+  margin: 0 4px;
 
-  &:hover { background: #EBEDF0; }
-  &.active { background: #E8EAED; font-weight: 500; }
+  &:hover { background: $sidebar-hover; }
+  &.active { 
+    background: $sidebar-active; 
+    font-weight: 600; 
+    color: $primary-color;
+  }
   &.is-folder { font-weight: 500; }
 
   .node-arrow {
     width: 18px; height: 18px;
     display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; color: #909399;
+    flex-shrink: 0; color: $text-muted;
+    transition: color $transition-fast;
   }
   .node-icon {
     width: 22px;
     display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; color: #909399; margin-right: 2px;
+    flex-shrink: 0; color: $text-muted; margin-right: 6px;
+    transition: color $transition-fast;
   }
   .node-title {
     flex: 1;
@@ -328,11 +357,11 @@ onMounted(async () => {
   }
   .node-count {
     font-size: 11px;
-    color: #909399;
-    background: #E5E7EB;
+    color: $text-muted;
+    background: $card-border;
     border-radius: 10px;
     padding: 0 6px;
-    margin-left: 6px;
+    margin-left: 8px;
     flex-shrink: 0;
   }
 }
@@ -342,42 +371,90 @@ onMounted(async () => {
   flex: 1;
   overflow-y: auto;
   padding: 24px 32px;
-  background: #F7F8FA;
+  background: $bg-gradient-start;
 }
 
 .blog-head {
-  margin-bottom: 24px;
-  h1 { margin: 0; font-size: 22px; }
+  margin-bottom: 28px;
+  h1 { 
+    margin: 0; 
+    font-size: 24px; 
+    font-weight: 700; 
+    color: $text-primary;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    &::before {
+      content: "";
+      width: 4px;
+      height: 24px;
+      background: linear-gradient(180deg, $primary-color, $accent-purple);
+      border-radius: 2px;
+    }
+  }
 }
 
 .blog-list { min-height: 200px; }
 
 .blog-card {
-  padding: 20px;
+  padding: 24px;
   margin-bottom: 16px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  background: $card-bg;
+  border-radius: $radius-lg;
+  border: 1px solid $card-border;
+  box-shadow: $card-shadow;
   cursor: pointer;
-  transition: box-shadow 0.2s;
-  &:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
-  h3 { margin: 0 0 8px; font-size: 18px; }
+  transition: all $transition-normal;
+  &:hover { 
+    box-shadow: $card-shadow-hover; 
+    transform: translateY(-1px);
+  }
+  h3 { 
+    margin: 0 0 10px; 
+    font-size: 18px; 
+    font-weight: 600;
+    color: $text-primary;
+    transition: color $transition-fast;
+  }
+  &:hover h3 {
+    color: $primary-color;
+  }
 }
 
-.bc-meta { display: flex; gap: 16px; font-size: 13px; color: #909399; margin-bottom: 8px; }
-.bc-summary { font-size: 14px; color: #606266; line-height: 1.6; margin: 0; }
-.blog-pager { margin-top: 24px; display: flex; justify-content: center; }
+.bc-meta { 
+  display: flex; 
+  gap: 16px; 
+  font-size: 13px; 
+  color: $text-muted; 
+  margin-bottom: 12px;
+  span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+.bc-summary { 
+  font-size: 14px; 
+  color: $text-secondary; 
+  line-height: 1.7; 
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.blog-pager { margin-top: 28px; display: flex; justify-content: center; }
 
 // ===== Chat Panel =====
 .chat-panel {
-  width: 320px;
-  min-width: 280px;
-  background: #fff;
-  border-left: 1px solid #E5E7EB;
+  width: 340px;
+  min-width: 300px;
+  background: $card-bg;
+  border-left: 1px solid $card-border;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: width 0.25s ease, min-width 0.25s ease;
+  transition: width $transition-normal, min-width $transition-normal;
 
   &.collapsed {
     width: 36px;
@@ -389,9 +466,29 @@ onMounted(async () => {
   .panel-head {
     position: relative;
     padding: 14px 16px;
-    border-bottom: 1px solid #E5E7EB;
-    h4 { margin: 0; font-size: 15px; font-weight: 600; color: #303133; }
-    .chat-hint { font-size: 11px; color: #909399; display: block; margin-top: 2px; }
+    border-bottom: 1px solid $card-border;
+    h4 { 
+      margin: 0; 
+      font-size: 15px; 
+      font-weight: 600; 
+      color: $text-primary;
+      display: flex; 
+      align-items: center; 
+      gap: 8px;
+      &::before { 
+        content: ""; 
+        width: 4px; 
+        height: 16px; 
+        background: linear-gradient(180deg, $primary-color, $accent-purple); 
+        border-radius: 2px; 
+      }
+    }
+    .chat-hint { 
+      font-size: 11px; 
+      color: $text-muted; 
+      display: block; 
+      margin-top: 4px; 
+    }
     .panel-toggle { position: absolute; right: 4px; top: 8px; }
   }
   .chat-messages {
@@ -401,35 +498,38 @@ onMounted(async () => {
     background: #F9FAFB;
   }
   .chat-msg {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     &.user {
       text-align: right;
       .msg-content {
-        background: #4D6BFE;
+        background: $primary-color;
         color: #fff;
         display: inline-block;
         padding: 10px 14px;
-        border-radius: 12px 12px 4px 12px;
+        border-radius: $radius-lg;
+        border-bottom-right-radius: 4px;
         max-width: 85%;
         text-align: left;
         font-size: 13px;
         white-space: pre-wrap;
+        box-shadow: 0 2px 6px rgba(77, 107, 254, 0.2);
       }
     }
     &.assistant {
       text-align: left;
       .msg-content {
-        background: #fff;
+        background: $card-bg;
         display: inline-block;
         padding: 10px 14px;
-        border-radius: 12px 12px 12px 4px;
+        border-radius: $radius-lg;
+        border-bottom-left-radius: 4px;
         max-width: 85%;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        box-shadow: $card-shadow;
         font-size: 13px;
         white-space: pre-wrap;
-        color: #303133;
-        border: 1px solid #E5E7EB;
-        &.typing { color: #909399; }
+        color: $text-primary;
+        border: 1px solid $card-border;
+        &.typing { color: $text-muted; }
       }
     }
   }
@@ -437,7 +537,8 @@ onMounted(async () => {
     display: flex;
     gap: 8px;
     padding: 12px;
-    border-top: 1px solid #E5E7EB;
+    border-top: 1px solid $card-border;
+    background: $card-bg;
   }
 }
 </style>

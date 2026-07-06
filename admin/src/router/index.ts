@@ -17,19 +17,19 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/",
     component: () => import("@/layouts/AdminLayout.vue"),
-    redirect: "/documents",
+    redirect: "/blog",
     children: [
       {
         path: "blog",
         name: "Blog",
         component: () => import("@/pages/blog/BlogListPage.vue"),
-        meta: { title: "博客" },
+        meta: { title: "博客", noAuth: true },
       },
       {
         path: "blog/:id",
         name: "BlogDetail",
         component: () => import("@/pages/blog/BlogDetailPage.vue"),
-        meta: { title: "文章详情" },
+        meta: { title: "文章详情", noAuth: true },
       },
       {
         path: "dashboard",
@@ -147,7 +147,7 @@ router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem("admin_token");
   if (to.meta.noAuth) {
     if (token && to.path === "/login") {
-      next("/dashboard");
+      next("/blog");
     } else {
       next();
     }
@@ -161,7 +161,7 @@ router.beforeEach((to, _from, next) => {
         if (adminInfo) {
           const admin = JSON.parse(adminInfo);
           if (admin.role !== "admin") {
-            next("/documents");
+            next("/blog");
             return;
           }
         }
