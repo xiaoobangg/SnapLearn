@@ -145,7 +145,7 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem("admin_token");
-  if (to.meta.noAuth) {
+  if (to.meta.noAuth || to.path === "/") {
     if (token && to.path === "/login") {
       next("/blog");
     } else {
