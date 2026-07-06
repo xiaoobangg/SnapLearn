@@ -33,6 +33,7 @@
       <view class="menu-item" @click="goCheckinShare"><text>📸 打卡分享</text><view class="menu-right"><text>›</text></view></view>
 <view class="menu-item" @click="goCheckinCalendar"><text>📅 打卡日历</text><view class="menu-right"><text class="menu-badge" v-if="checkinStats.consecutive_days > 0">连续{{ checkinStats.consecutive_days }}天</text><text>›</text></view></view>
       <!-- <view class="menu-item" @click="goAIChat"><text>🤖 AI 助手</text><text>›</text></view>-->
+      <view class="menu-item" @click="goFeedback"><text>💬 意见反馈</text><text>›</text></view>
       <view class="menu-item" @click="showAbout"><text>ℹ️ 关于拍立学</text><text>›</text></view>
       <view class="menu-item" @click="handleLogout" v-if="userStore.isLoggedIn"><text class="danger">🚪 退出登录</text><text>›</text></view>
     </view>
@@ -109,6 +110,7 @@ function goCheckinShare() { uni.navigateTo({ url: "/pages/checkin-share/checkin-
 function goCheckinCalendar() { uni.navigateTo({ url: "/pages/checkin-calendar/checkin-calendar" }); }
 function goAIChat() { uni.switchTab({ url: "/pages/chat/chat" }); }
 function goLogin() { uni.navigateTo({ url: "/pages/login/login" }); }
+function goFeedback() { uni.navigateTo({ url: "/pages/feedback/feedback" }); }
 function showAbout() { uni.showModal({ title: "拍立学", content: "拍照学习，快乐学英语\n版本 0.2.0", showCancel: false }); }
 async function handleLogout() { const res = await uni.showModal({ title: "提示", content: "确定退出登录？" }); if (res.confirm) { await userStore.doLogout(); } }
 </script>

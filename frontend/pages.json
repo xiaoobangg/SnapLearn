@@ -13,6 +13,7 @@
     { "path": "pages/checkin-share/checkin-share", "style": { "navigationBarTitleText": "打卡分享" } },
     { "path": "pages/chat/chat", "style": { "navigationBarTitleText": "AI 助手" } },
     { "path": "pages/review/review", "style": { "navigationBarTitleText": "复习", "navigationStyle": "custom" } },
+    { "path": "pages/feedback/feedback", "style": { "navigationBarTitleText": "意见反馈" } },
     { "path": "pages/login/login", "style": { "navigationBarTitleText": "登录" } }
   ],
   "globalStyle": {

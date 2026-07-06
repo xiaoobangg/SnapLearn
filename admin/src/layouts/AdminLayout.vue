@@ -29,6 +29,10 @@
           <el-icon><Notebook /></el-icon>
           <span>博客</span>
         </el-menu-item>
+        <el-menu-item index="/feedbacks" v-if="isLoggedIn">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>用户反馈</span>
+        </el-menu-item>
         <template v-if="isAdmin">
           <el-menu-item index="/users">
             <el-icon><User /></el-icon>

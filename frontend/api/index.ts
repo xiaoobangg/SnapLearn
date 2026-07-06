@@ -206,4 +206,14 @@ export const api = {
   removeFromNotebook(id: string): Promise<void> {
     return request<void>({ url: `/notebook/${id}`, method: "DELETE" });
   },
+
+  /** 提交用户反馈 */
+  submitFeedback(data: { content: string }): Promise<{ ok: boolean }> {
+    return request({ url: "/feedback", method: "POST", data });
+  },
+
+  /** 查看我的反馈及回复 */
+  getMyFeedbacks(): Promise<any[]> {
+    return request({ url: "/feedback/my" });
+  },
 };
