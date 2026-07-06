@@ -28,16 +28,28 @@
 
     <!-- ====== 右侧：文章详情 ====== -->
     <div class="center-panel">
-      <div class="article-wrapper" v-if="doc.title">
-        <el-button text class="back-btn" @click="$router.push('/blog')">
-          <el-icon :size="16"><ArrowLeft /></el-icon> 返回博客列表
-        </el-button>
-        <h1 class="bd-title">{{ doc.title }}</h1>
-        <div class="bd-meta">
-          <span v-if="doc.category">{{ doc.category }}</span>
-          <span>{{ doc.updated_at?.substring(0,10) }}</span>
+      <div class="article-body" v-if="doc.title">
+        <div class="article-main">
+          <el-button text class="back-btn" @click="$router.push('/blog')">
+            <el-icon :size="16"><ArrowLeft /></el-icon> 返回博客列表
+          </el-button>
+          <h1 class="bd-title">{{ doc.title }}</h1>
+          <div class="bd-meta">
+            <span v-if="doc.category">{{ doc.category }}</span>
+            <span>{{ doc.updated_at?.substring(0,10) }}</span>
+          </div>
+          <MdPreview :modelValue="doc.content || ''" language="zh-CN" preview-theme="github" :no-highlight="true" class="bd-content" />
         </div>
-        <MdPreview :modelValue="doc.content || ''" language="zh-CN" preview-theme="github" :no-highlight="true" class="bd-content" />
+        <div class="article-toc" v-if="tocItems.length > 0">
+          <div class="toc-title">目录</div>
+          <a v-for="(item, i) in tocItems" :key="i"
+            :class="['toc-link', 'toc-level-' + item.level]"
+            :href="'#' + item.slug"
+            :style="{ paddingLeft: (item.level - 1) * 16 + 'px' }"
+            @click.prevent="scrollToHeading(item.slug)">
+            {{ item.text }}
+          </a>
+        </div>
       </div>
       <div v-else class="empty-detail">
         <el-empty description="文章不存在" />
@@ -140,6 +152,28 @@ function onNodeClick(node: DocItem) {
   } else {
     router.push(`/blog/${node.id}`);
   }
+}
+
+// ===== 目录 =====
+interface TocItem { level: number; text: string; slug: string; }
+const tocItems = computed<TocItem[]>(() => {
+  const md = doc.value.content || "";
+  const items: TocItem[] = [];
+  const regex = /^(#{1,4})\s+(.+)$/gm;
+  let match;
+  while ((match = regex.exec(md)) !== null) {
+    items.push({
+      level: match[1].length,
+      text: match[2].trim(),
+      slug: match[2].trim().toLowerCase().replace(/\s+/g, "-"),
+    });
+  }
+  return items;
+});
+
+function scrollToHeading(slug: string) {
+  const el = document.querySelector(`.bd-content`)?.querySelector(`[id="${slug}"], [id*="${slug}"]`);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // ===== 文章详情 =====
@@ -313,9 +347,31 @@ onMounted(async () => {
   } 
 }
 
-.article-wrapper {
-  max-width: 850px;
+.article-body {
+  display: flex;
+  gap: 32px;
+  max-width: 1100px;
   margin: 0 auto;
+}
+.article-main { flex: 1; min-width: 0; }
+.article-toc {
+  width: 200px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 24px;
+  align-self: flex-start;
+  .toc-title { font-size: 15px; font-weight: 600; color: $text-primary; margin-bottom: 12px; }
+  .toc-link {
+    display: block;
+    font-size: 13px;
+    color: $text-secondary;
+    text-decoration: none;
+    padding: 4px 0;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    &:hover { color: $primary-color; border-left-color: $primary-color; }
+    &.toc-level-1 { font-weight: 600; }
+  }
 }
 
 .bd-title { 
