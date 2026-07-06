@@ -40,14 +40,17 @@ public class AdminController {
     // ===== 认证 =====
 
     @PostMapping("/login")
-    public Map<String, Object> login(@Valid @RequestBody LoginReq req) {
-        Map<String, Object> originalResult = adminService.login(req.username(), req.password());
+    public Map<String, Object> login(@RequestBody Map<String, String> body) {
+        String captchaKey = body.get("captcha_key");
+        String captchaCode = body.get("captcha_code");
+        // 只有前端传了验证码参数才校验（连续失败 2 次后出现）
+        if (captchaKey != null && !CaptchaController.verify(captchaKey, captchaCode)) {
+            throw new BusinessException(400, "验证码错误或已过期");
+        }
+        Map<String, Object> originalResult = adminService.login(body.get("username"), body.get("password"));
         Map<String, Object> result = new HashMap<>(originalResult);
-        result.put("is_default_pwd", AdminService.DEFAULT_ADMIN_PASSWORD.equals(req.password()));
+        result.put("is_default_pwd", AdminService.DEFAULT_ADMIN_PASSWORD.equals(body.get("password")));
         return result;
-    }
-
-    public record LoginReq(@NotBlank String username, @NotBlank String password) {
     }
 
     @PutMapping("/password")

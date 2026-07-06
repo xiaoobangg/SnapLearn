@@ -50,32 +50,15 @@
     </div>
 
     <!-- ====== 右侧：AI 助手 ====== -->
-    <div class="chat-panel" :class="{ collapsed: !showChat }">
-      <div class="panel-head">
-        <h4>AI 助手</h4>
-        <el-button size="small" text class="panel-toggle" @click="showChat = !showChat">
-          <el-icon :size="16"><DArrowRight v-if="showChat" /><DArrowLeft v-else /></el-icon>
-        </el-button>
-        <span class="chat-hint">基于博客文章回答</span>
-      </div>
-      <div class="chat-messages" ref="chatMsgsRef">
-        <div v-for="(msg, i) in chatMessages" :key="i" :class="['chat-msg', msg.role]">
-          <div class="msg-content">{{ msg.content }}</div>
-        </div>
-        <div v-if="chatLoading" class="chat-msg assistant"><div class="msg-content typing">...</div></div>
-      </div>
-      <div class="chat-input">
-        <el-input v-model="chatInput" size="small" placeholder="询问博客内容..." @keyup.enter="sendChat" :disabled="chatLoading" />
-        <el-button size="small" type="primary" @click="sendChat" :loading="chatLoading">发送</el-button>
-      </div>
-    </div>
+    <BlogChatPanel />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { Folder, Document, ArrowDown, ArrowRight, DArrowRight, DArrowLeft } from "@element-plus/icons-vue";
+import { Folder, Document, ArrowDown, ArrowRight } from "@element-plus/icons-vue";
+import BlogChatPanel from "@/components/BlogChatPanel.vue";
 import http from "@/utils/request";
 
 const router = useRouter();
@@ -197,64 +180,6 @@ function collectFolderIds(folderId: string): string[] {
     }
   }
   return ids;
-}
-
-// ===== AI 对话 =====
-const showChat = ref(true);
-const chatInput = ref("");
-const chatMessages = ref<{ role: string; content: string }[]>([]);
-const chatLoading = ref(false);
-const chatMsgsRef = ref<HTMLElement>();
-const chatId = ref(Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
-
-function scrollChat() {
-  nextTick(() => {
-    if (chatMsgsRef.value) chatMsgsRef.value.scrollTop = chatMsgsRef.value.scrollHeight;
-  });
-}
-
-async function sendChat() {
-  const msg = chatInput.value.trim();
-  if (!msg || chatLoading.value) return;
-  chatInput.value = "";
-  chatMessages.value.push({ role: "user", content: msg });
-  chatMessages.value.push({ role: "assistant", content: "" });
-  scrollChat();
-  chatLoading.value = true;
-  try {
-    const resp = await fetch("/api/v1/public/chat/stream", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: msg, model: "deepseek", chat_id: chatId.value }),
-    });
-    const reader = resp.body?.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let isFirstLine = true;
-    const lastMsg = chatMessages.value[chatMessages.value.length - 1];
-    while (reader) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-      for (const line of lines) {
-        if (line.startsWith("data:")) {
-          const data = line.slice(5).replace(/^ /, "");
-          if (data === "[DONE]") continue;
-          if (!isFirstLine) lastMsg.content += "\n";
-          lastMsg.content += data;
-          isFirstLine = false;
-        } else if (line === "") {
-          isFirstLine = true;
-        }
-      }
-      scrollChat();
-    }
-  } catch {
-    chatMessages.value[chatMessages.value.length - 1].content = "请求失败，请重试";
-  }
-  chatLoading.value = false;
 }
 
 onMounted(async () => {
@@ -445,100 +370,4 @@ onMounted(async () => {
 }
 .blog-pager { margin-top: 28px; display: flex; justify-content: center; }
 
-// ===== Chat Panel =====
-.chat-panel {
-  width: 340px;
-  min-width: 300px;
-  background: $card-bg;
-  border-left: 1px solid $card-border;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: width $transition-normal, min-width $transition-normal;
-
-  &.collapsed {
-    width: 36px;
-    min-width: 36px;
-    .chat-messages, .chat-input, .chat-hint { display: none; }
-    .panel-head { padding: 12px 8px; h4 { display: none; } }
-  }
-
-  .panel-head {
-    position: relative;
-    padding: 14px 16px;
-    border-bottom: 1px solid $card-border;
-    h4 { 
-      margin: 0; 
-      font-size: 15px; 
-      font-weight: 600; 
-      color: $text-primary;
-      display: flex; 
-      align-items: center; 
-      gap: 8px;
-      &::before { 
-        content: ""; 
-        width: 4px; 
-        height: 16px; 
-        background: linear-gradient(180deg, $primary-color, $accent-purple); 
-        border-radius: 2px; 
-      }
-    }
-    .chat-hint { 
-      font-size: 11px; 
-      color: $text-muted; 
-      display: block; 
-      margin-top: 4px; 
-    }
-    .panel-toggle { position: absolute; right: 4px; top: 8px; }
-  }
-  .chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-    background: #F9FAFB;
-  }
-  .chat-msg {
-    margin-bottom: 14px;
-    &.user {
-      text-align: right;
-      .msg-content {
-        background: $primary-color;
-        color: #fff;
-        display: inline-block;
-        padding: 10px 14px;
-        border-radius: $radius-lg;
-        border-bottom-right-radius: 4px;
-        max-width: 85%;
-        text-align: left;
-        font-size: 13px;
-        white-space: pre-wrap;
-        box-shadow: 0 2px 6px rgba(77, 107, 254, 0.2);
-      }
-    }
-    &.assistant {
-      text-align: left;
-      .msg-content {
-        background: $card-bg;
-        display: inline-block;
-        padding: 10px 14px;
-        border-radius: $radius-lg;
-        border-bottom-left-radius: 4px;
-        max-width: 85%;
-        box-shadow: $card-shadow;
-        font-size: 13px;
-        white-space: pre-wrap;
-        color: $text-primary;
-        border: 1px solid $card-border;
-        &.typing { color: $text-muted; }
-      }
-    }
-  }
-  .chat-input {
-    display: flex;
-    gap: 8px;
-    padding: 12px;
-    border-top: 1px solid $card-border;
-    background: $card-bg;
-  }
-}
 </style>

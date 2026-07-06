@@ -67,6 +67,9 @@
         </div>
       </div>
     </div>
+
+    <!-- ====== 右侧：AI 助手 ====== -->
+    <BlogChatPanel />
   </div>
 </template>
 
@@ -74,6 +77,7 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { Folder, Document, ArrowDown, ArrowRight, ArrowLeft } from "@element-plus/icons-vue";
+import BlogChatPanel from "@/components/BlogChatPanel.vue";
 import http from "@/utils/request";
 import { MdPreview } from "md-editor-v3";
 import "md-editor-v3/lib/style.css";
@@ -540,4 +544,5 @@ onMounted(async () => {
     resize: vertical;
   }
 }
+
 </style>

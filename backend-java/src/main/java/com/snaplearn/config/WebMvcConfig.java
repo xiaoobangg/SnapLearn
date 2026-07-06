@@ -67,6 +67,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/v1/coze/**",
                         "/api/v1/public/**",
                         "/api/v1/admin/login",
+                        "/api/v1/captcha",
                         "/api/health"
                 );
     }

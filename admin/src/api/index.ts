@@ -2,8 +2,8 @@ import http from "@/utils/request";
 
 // ===== 认证 =====
 export const authApi = {
-  login(username: string, password: string) {
-    return http.post("/admin/login", { username, password });
+  login(username: string, password: string, captchaKey?: string, captchaCode?: string) {
+    return http.post("/admin/login", { username, password, captcha_key: captchaKey, captcha_code: captchaCode });
   },
   register(username: string, password: string) {
     return http.post("/auth/register", { username, password });

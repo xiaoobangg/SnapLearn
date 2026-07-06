@@ -47,11 +47,25 @@
             />
           </div>
           
+          <div class="form-group" v-if="showCaptcha">
+            <label class="form-label">验证码</label>
+            <div class="captcha-row">
+              <el-input
+                v-model="form.captchaCode"
+                placeholder="验证码"
+                size="large"
+                class="captcha-input"
+                maxlength="4"
+              />
+              <img :src="captchaImage" @click="loadCaptcha" class="captcha-img" title="点击刷新" />
+            </div>
+          </div>
+
           <div class="form-actions">
-            <el-button 
-              type="primary" 
-              size="large" 
-              :loading="loading" 
+            <el-button
+              type="primary"
+              size="large"
+              :loading="loading"
               @click="handleLogin"
               class="login-btn"
             >
@@ -106,7 +120,20 @@ const newPwd = ref("");
 const form = reactive({
   username: "",
   password: "",
+  captchaCode: "",
 });
+const captchaKey = ref("");
+const captchaImage = ref("");
+const showCaptcha = ref(false);
+const failCount = ref(parseInt(sessionStorage.getItem("login_fails") || "0"));
+
+async function loadCaptcha() {
+  try {
+    const res = await http.get("/captcha");
+    captchaKey.value = res.data.key;
+    captchaImage.value = res.data.image;
+  } catch { /* */ }
+}
 
 const rules = {
   username: [{ required: true, message: "请输入用户名", trigger: "blur" }],
@@ -119,8 +146,11 @@ async function handleLogin() {
 
   loading.value = true;
   try {
-    const { is_default_pwd } = await adminStore.login(form.username, form.password);
+    const captchaK = showCaptcha.value ? captchaKey.value : undefined;
+    const captchaC = showCaptcha.value ? form.captchaCode : undefined;
+    const { is_default_pwd } = await adminStore.login(form.username, form.password, captchaK, captchaC);
     ElMessage.success("登录成功");
+    sessionStorage.removeItem("login_fails");
     if (is_default_pwd) {
       ElMessageBox.confirm(
         "您当前使用的是默认密码，建议立即修改以确保安全。",
@@ -134,7 +164,13 @@ async function handleLogin() {
       router.push(adminStore.role === "admin" ? "/dashboard" : "/documents");
     }
   } catch (e: any) {
-    // error handled by interceptor
+    failCount.value++;
+    sessionStorage.setItem("login_fails", String(failCount.value));
+    if (failCount.value >= 2) {
+      showCaptcha.value = true;
+      loadCaptcha();
+      form.captchaCode = "";
+    }
   } finally {
     loading.value = false;
   }
@@ -391,6 +427,19 @@ function skipChangePwd() {
 
   .el-input__prefix {
     color: #9CA3AF;
+  }
+}
+
+.captcha-row {
+  display: flex;
+  gap: 10px;
+  .captcha-input { flex: 1; }
+  .captcha-img {
+    width: 100px;
+    height: 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid #E5E7EB;
   }
 }
 

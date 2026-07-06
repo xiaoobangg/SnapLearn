@@ -22,6 +22,11 @@ public class AuthController {
 
     @PostMapping("/web-login")
     public Map<String, Object> webLogin(@RequestBody Map<String, String> body) {
+        String captchaKey = body.get("captcha_key");
+        String captchaCode = body.get("captcha_code");
+        if (captchaKey != null && !CaptchaController.verify(captchaKey, captchaCode)) {
+            throw new com.snaplearn.common.exception.BusinessException(400, "验证码错误或已过期");
+        }
         return adminService.login(body.get("username"), body.get("password"));
     }
 

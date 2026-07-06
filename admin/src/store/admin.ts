@@ -10,8 +10,8 @@ export const useAdminStore = defineStore("admin", () => {
 
   const isLoggedIn = ref(!!localStorage.getItem("admin_token"));
 
-  async function login(usernameVal: string, password: string) {
-    const res = await authApi.login(usernameVal, password);
+  async function login(usernameVal: string, password: string, captchaKey?: string, captchaCode?: string) {
+    const res = await authApi.login(usernameVal, password, captchaKey, captchaCode);
     const { token, admin, is_default_pwd } = res.data;
     localStorage.setItem("admin_token", token);
     localStorage.setItem("admin_info", JSON.stringify(admin));
