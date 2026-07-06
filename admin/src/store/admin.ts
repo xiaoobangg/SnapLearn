@@ -17,10 +17,21 @@ export const useAdminStore = defineStore("admin", () => {
     localStorage.setItem("admin_info", JSON.stringify(admin));
     id.value = admin.id;
     username.value = admin.username;
-    email.value = admin.email;
+    email.value = "";
     role.value = admin.role;
     isLoggedIn.value = true;
     return { admin, is_default_pwd: !!is_default_pwd };
+  }
+
+  async function register(usernameVal: string, password: string) {
+    const res = await authApi.register(usernameVal, password);
+    const { token, user } = res.data;
+    localStorage.setItem("admin_token", token);
+    localStorage.setItem("admin_info", JSON.stringify(user));
+    id.value = user.id;
+    username.value = user.username;
+    role.value = user.role;
+    isLoggedIn.value = true;
   }
 
   function loadFromStorage() {
@@ -45,5 +56,5 @@ export const useAdminStore = defineStore("admin", () => {
     isLoggedIn.value = false;
   }
 
-  return { id, username, email, role, isLoggedIn, login, loadFromStorage, logout };
+  return { id, username, email, role, isLoggedIn, login, register, loadFromStorage, logout };
 });

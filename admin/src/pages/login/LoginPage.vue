@@ -62,7 +62,8 @@
         </el-form>
         
         <div class="card-footer">
-          <span class="footer-text">版本 v2.3</span>
+          <span class="footer-text">还没有账号？<router-link to="/register" style="color:#4D6BFE;">立即注册</router-link></span>
+          <span class="footer-text" style="margin-top:8px;">版本 v2.3</span>
         </div>
       </div>
     </div>
@@ -130,7 +131,7 @@ async function handleLogin() {
       }).catch(() => {});
     }
     if (!is_default_pwd) {
-      router.push("/dashboard");
+      router.push(adminStore.role === "admin" ? "/dashboard" : "/documents");
     }
   } catch (e: any) {
     // error handled by interceptor
@@ -144,13 +145,13 @@ async function doChangePwd() {
     await http.put("/admin/password", { old_password: oldPwd.value, new_password: newPwd.value });
     ElMessage.success("密码修改成功");
     showChangePwd.value = false;
-    router.push("/dashboard");
+    router.push(adminStore.role === "admin" ? "/dashboard" : "/documents");
   } catch { ElMessage.error("密码修改失败"); }
 }
 
 function skipChangePwd() {
   showChangePwd.value = false;
-  router.push("/dashboard");
+  router.push(adminStore.role === "admin" ? "/dashboard" : "/documents");
 }
 </script>
 

@@ -182,6 +182,7 @@ public class AdminKnowledgeController {
             doc.getMetadata().put("file_name", fileName);
             doc.getMetadata().put("file_id", fileId);
             doc.getMetadata().put("user_id", userId);
+            doc.getMetadata().put("status", "published");
             doc.getMetadata().put("upload_time", Instant.now().toString());
         });
         List<Document> chunks = splitter.transform(rawDocs);

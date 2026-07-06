@@ -60,9 +60,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/v1/auth/login",
                         "/api/v1/auth/wechat-login",
                         "/api/v1/auth/dev-login",
+                        "/api/v1/auth/web-login",
+                        "/api/v1/auth/register",
                         "/api/v1/ocr/recognize",
                         "/api/v1/ocr/recognize-ai",
                         "/api/v1/coze/**",
+                        "/api/v1/public/**",
                         "/api/v1/admin/login",
                         "/api/health"
                 );

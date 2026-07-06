@@ -21,7 +21,10 @@ public class SnapDocument {
     private String sourceName;
     private Long fileSize;
     private Integer sortOrder;
-    private String knowledgeFileId; // FK to snap_knowledge_files.id
+    private String knowledgeFileId;
+    private String visibility;
+    private String parentId;
+    private String docType;        // folder / document
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

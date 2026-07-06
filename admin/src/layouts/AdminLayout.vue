@@ -7,7 +7,6 @@
             <el-icon><Odometer /></el-icon>
           </div>
           <span class="logo-text">SnapLearn</span>
-          <span class="logo-sub">管理后台</span>
         </div>
       </div>
       <el-menu
@@ -18,62 +17,68 @@
         active-text-color="#4D6BFE"
         class="main-menu"
       >
-        <el-menu-item index="/dashboard">
+        <el-menu-item index="/dashboard" v-if="isAdmin">
           <el-icon><Odometer /></el-icon>
           <span>仪表盘</span>
-        </el-menu-item>
-        <el-menu-item index="/users">
-          <el-icon><User /></el-icon>
-          <span>用户管理</span>
-        </el-menu-item>
-        <el-menu-item index="/groups">
-          <el-icon><Folder /></el-icon>
-          <span>卡片组管理</span>
-        </el-menu-item>
-        <el-menu-item index="/cards">
-          <el-icon><Document /></el-icon>
-          <span>卡片管理</span>
-        </el-menu-item>
-        <el-menu-item index="/word-banks">
-          <el-icon><Collection /></el-icon>
-          <span>词库管理</span>
-        </el-menu-item>
-        <el-menu-item index="/word-contents">
-          <el-icon><Notebook /></el-icon>
-          <span>单词内容</span>
-        </el-menu-item>
-        <el-menu-item index="/knowledge">
-          <el-icon><Notebook /></el-icon>
-          <span>知识库</span>
         </el-menu-item>
         <el-menu-item index="/documents">
           <el-icon><Document /></el-icon>
           <span>文档管理</span>
         </el-menu-item>
-        <el-menu-item index="/voices">
-          <el-icon><Microphone /></el-icon>
-          <span>音色管理</span>
+        <el-menu-item index="/blog">
+          <el-icon><Notebook /></el-icon>
+          <span>博客</span>
         </el-menu-item>
-        <el-menu-item index="/chat">
-          <el-icon><ChatDotRound /></el-icon>
-          <span>AI 对话</span>
-        </el-menu-item>
-        <el-menu-item index="/logs">
-          <el-icon><List /></el-icon>
-          <span>访问日志</span>
-        </el-menu-item>
-        <el-menu-item index="/chat-traces">
-          <el-icon><ChatLineRound /></el-icon>
-          <span>AI 对话日志</span>
-        </el-menu-item>
-        <el-menu-item index="/api-keys">
-          <el-icon><Key /></el-icon>
-          <span>API Key</span>
-        </el-menu-item>
-        <el-menu-item index="/settings">
-          <el-icon><Setting /></el-icon>
-          <span>系统设置</span>
-        </el-menu-item>
+        <template v-if="isAdmin">
+          <el-menu-item index="/users">
+            <el-icon><User /></el-icon>
+            <span>用户管理</span>
+          </el-menu-item>
+          <el-menu-item index="/groups">
+            <el-icon><Folder /></el-icon>
+            <span>卡片组管理</span>
+          </el-menu-item>
+          <el-menu-item index="/cards">
+            <el-icon><Document /></el-icon>
+            <span>卡片管理</span>
+          </el-menu-item>
+          <el-menu-item index="/word-banks">
+            <el-icon><Collection /></el-icon>
+            <span>词库管理</span>
+          </el-menu-item>
+          <el-menu-item index="/word-contents">
+            <el-icon><Notebook /></el-icon>
+            <span>单词内容</span>
+          </el-menu-item>
+          <el-menu-item index="/knowledge">
+            <el-icon><Notebook /></el-icon>
+            <span>知识库</span>
+          </el-menu-item>
+          <el-menu-item index="/voices">
+            <el-icon><Microphone /></el-icon>
+            <span>音色管理</span>
+          </el-menu-item>
+          <el-menu-item index="/chat">
+            <el-icon><ChatDotRound /></el-icon>
+            <span>AI 对话</span>
+          </el-menu-item>
+          <el-menu-item index="/logs">
+            <el-icon><List /></el-icon>
+            <span>访问日志</span>
+          </el-menu-item>
+          <el-menu-item index="/chat-traces">
+            <el-icon><ChatLineRound /></el-icon>
+            <span>AI 对话日志</span>
+          </el-menu-item>
+          <el-menu-item index="/api-keys">
+            <el-icon><Key /></el-icon>
+            <span>API Key</span>
+          </el-menu-item>
+          <el-menu-item index="/settings">
+            <el-icon><Setting /></el-icon>
+            <span>系统设置</span>
+          </el-menu-item>
+        </template>
       </el-menu>
       <div class="aside-footer">
         <div class="version">v2.3</div>
@@ -110,6 +115,7 @@
             </span>
             <template #dropdown>
               <el-dropdown-menu>
+                <el-dropdown-item command="changePwd">修改密码</el-dropdown-item>
                 <el-dropdown-item command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -120,12 +126,31 @@
       <el-main class="main">
         <router-view />
       </el-main>
+
+      <!-- 修改密码对话框 -->
+      <el-dialog v-model="showPwdDialog" title="修改密码" width="400px">
+        <el-form :model="pwdForm" :rules="pwdRules" ref="pwdFormRef" label-width="80px">
+          <el-form-item label="旧密码" prop="oldPwd">
+            <el-input v-model="pwdForm.oldPwd" type="password" show-password />
+          </el-form-item>
+          <el-form-item label="新密码" prop="newPwd">
+            <el-input v-model="pwdForm.newPwd" type="password" show-password />
+          </el-form-item>
+          <el-form-item label="确认密码" prop="confirmPwd">
+            <el-input v-model="pwdForm.confirmPwd" type="password" show-password />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="showPwdDialog=false">取消</el-button>
+          <el-button type="primary" @click="doChangePwd">确认修改</el-button>
+        </template>
+      </el-dialog>
     </el-container>
   </el-container>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, reactive } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAdminStore } from "@/store/admin";
 import {
@@ -143,6 +168,8 @@ import {
   Setting,
   ArrowDown,
 } from "@element-plus/icons-vue";
+import http from "@/utils/request";
+import { ElMessage } from "element-plus";
 
 const route = useRoute();
 const router = useRouter();
@@ -159,6 +186,7 @@ const activeMenu = computed(() => {
   if (path.startsWith("/word-contents")) return "/word-contents";
   if (path.startsWith("/knowledge")) return "/knowledge";
   if (path.startsWith("/documents")) return "/documents";
+  if (path.startsWith("/blog")) return "/blog";
   if (path.startsWith("/chat-traces")) return "/chat-traces";
   if (path.startsWith("/chat")) return "/chat";
   if (path.startsWith("/voices")) return "/voices";
@@ -168,11 +196,30 @@ const activeMenu = computed(() => {
   return path;
 });
 
+const showPwdDialog = ref(false);
+const pwdFormRef = ref();
+const pwdForm = reactive({ oldPwd: "", newPwd: "", confirmPwd: "" });
+const pwdRules = {
+  oldPwd: [{ required: true, message: "请输入旧密码", trigger: "blur" }],
+  newPwd: [{ required: true, min: 6, message: "至少6位", trigger: "blur" }],
+  confirmPwd: [{ required: true, validator: (_r: any, v: string, cb: any) => cb(v !== pwdForm.newPwd ? new Error("两次密码不一致") : undefined), trigger: "blur" }],
+};
+
 function handleCommand(cmd: string) {
-  if (cmd === "logout") {
+  if (cmd === "changePwd") { pwdForm.oldPwd = ""; pwdForm.newPwd = ""; pwdForm.confirmPwd = ""; showPwdDialog.value = true; }
+  if (cmd === "logout") { adminStore.logout(); router.push("/login"); }
+}
+
+async function doChangePwd() {
+  const valid = await pwdFormRef.value?.validate().catch(() => false);
+  if (!valid) return;
+  try {
+    await http.put("/admin/password", { old_password: pwdForm.oldPwd, new_password: pwdForm.newPwd });
+    ElMessage.success("密码修改成功，请重新登录");
+    showPwdDialog.value = false;
     adminStore.logout();
     router.push("/login");
-  }
+  } catch { ElMessage.error("密码修改失败"); }
 }
 </script>
 

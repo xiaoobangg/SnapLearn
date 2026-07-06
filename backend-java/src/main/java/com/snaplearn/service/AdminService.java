@@ -31,7 +31,7 @@ public class AdminService {
 
     public Map<String, Object> login(String username, String password) {
         QueryWrapper<User> qw = new QueryWrapper<>();
-        qw.eq("phone", username);
+        qw.eq("username", username);
         User user = userMapper.selectOne(qw);
         if (user == null) {
             throw new BusinessException(401, "用户名或密码错误");
@@ -43,23 +43,56 @@ public class AdminService {
             throw new BusinessException(401, "用户名或密码错误");
         }
 
-        // 检查是否有 admin 角色
+        // 获取用户角色列表
         QueryWrapper<UserRole> rq = new QueryWrapper<>();
-        rq.eq("user_id", user.getId()).eq("role_code", "admin");
-        if (!userRoleMapper.exists(rq)) {
-            throw new BusinessException(403, "无管理员权限");
-        }
+        rq.eq("user_id", user.getId());
+        List<String> roles = userRoleMapper.selectList(rq).stream()
+                .map(UserRole::getRoleCode).toList();
+        if (roles.isEmpty()) roles = List.of("user");
 
-        String token = jwtUtil.createToken(user.getId(), List.of("admin"));
+        String token = jwtUtil.createToken(user.getId(), roles);
         return Map.of(
                 "token", token,
                 "admin", Map.of(
                         "id", user.getId(),
-                        "username", user.getPhone(),
+                        "username", user.getUsername() != null ? user.getUsername() : "",
                         "nickname", user.getNickname() != null ? user.getNickname() : "",
-                        "role", "admin"
+                        "role", roles.contains("admin") ? "admin" : "user"
                 )
         );
+    }
+
+    /** Web 端注册：username + password → role=user */
+    public Map<String, Object> register(String username, String password) {
+        QueryWrapper<User> qw = new QueryWrapper<>();
+        qw.eq("username", username);
+        if (userMapper.selectCount(qw) > 0) throw new BusinessException(400, "用户名已存在");
+
+        User user = new User();
+        user.setId(UUID.randomUUID().toString());
+        user.setUsername(username);
+        user.setNickname(username);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setIsActive(true);
+        userMapper.insert(user);
+
+        UserRole ur = new UserRole();
+        ur.setId(UUID.randomUUID().toString());
+        ur.setUserId(user.getId());
+        ur.setRoleCode("user");
+        userRoleMapper.insert(ur);
+
+        String token = jwtUtil.createToken(user.getId(), List.of("user"));
+        return Map.of("token", token, "user", Map.of(
+                "id", user.getId(), "username", username, "role", "user"));
+    }
+
+    public void deleteUser(String id) {
+        // 同时删关联的角色
+        QueryWrapper<UserRole> rq = new QueryWrapper<>();
+        rq.eq("user_id", id);
+        userRoleMapper.delete(rq);
+        userMapper.deleteById(id);
     }
 
     public User getById(String id) {
@@ -93,7 +126,7 @@ public class AdminService {
         // 创建默认管理员用户
         User user = new User();
         user.setId(UUID.randomUUID().toString());
-        user.setPhone("admin");
+        user.setUsername("admin");
         user.setNickname("管理员");
         user.setEmail("admin@snaplearn.com");
         user.setPasswordHash(passwordEncoder.encode(DEFAULT_ADMIN_PASSWORD));

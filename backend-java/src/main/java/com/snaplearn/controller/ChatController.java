@@ -10,6 +10,7 @@ import com.snaplearn.security.CurrentUser;
 import com.snaplearn.service.LLMService;
 import com.snaplearn.service.agent.AgentScope;
 import com.snaplearn.service.agent.CardGroupAgentService;
+import com.snaplearn.service.agent.DocumentAgentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.codec.ServerSentEvent;
@@ -31,6 +32,7 @@ public class ChatController {
     private final LLMService llmService;
     private final ChatConversationMapper conversationMapper;
     private final CardGroupAgentService cardGroupAgentService;
+    private final DocumentAgentService documentAgentService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -48,7 +50,11 @@ public class ChatController {
         ensureConversation(userId, chatId, message);
 
         if ("agent".equalsIgnoreCase(mode)) {
-            // Agent 模式：ReactAgent 同步执行，返回 SSE 格式
+            String agentType = stringOrDefault(body.get("agent_type"), "card_group");
+            if ("document".equals(agentType)) {
+                return documentAgentService.runStream(message, model, chatId, userId);
+            }
+            // 现有卡片组 Agent
             Map<String, Object> agentReq = new java.util.LinkedHashMap<>();
             agentReq.put("message", message);
             agentReq.put("model", model);
@@ -90,6 +96,10 @@ public class ChatController {
         ensureConversation(userId, chatId, message);
 
         if ("agent".equalsIgnoreCase(mode)) {
+            String agentType = stringOrDefault(body.get("agent_type"), "card_group");
+            if ("document".equals(agentType)) {
+                return documentAgentService.run(message, model, chatId, userId);
+            }
             Map<String, Object> agentReq = new java.util.LinkedHashMap<>();
             agentReq.put("message", message);
             agentReq.put("model", model);

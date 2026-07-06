@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 public class User {
     @TableId
     private String id;
+    private String username;
     private String phone;
     private String nickname;
     private String avatarUrl;

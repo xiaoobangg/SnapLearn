@@ -18,6 +18,17 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final com.snaplearn.service.AdminService adminService;
+
+    @PostMapping("/web-login")
+    public Map<String, Object> webLogin(@RequestBody Map<String, String> body) {
+        return adminService.login(body.get("username"), body.get("password"));
+    }
+
+    @PostMapping("/register")
+    public Map<String, Object> register(@RequestBody Map<String, String> body) {
+        return adminService.register(body.get("username"), body.get("password"));
+    }
 
     @PostMapping("/login")
     public AuthResponse login(@RequestBody @Valid LoginRequest req) {

@@ -61,7 +61,32 @@ public class DocumentService {
         return documentMapper.selectPage(new Page<>(page, size), qw);
     }
 
-    public SnapDocument createAndPublish(String userId, String title, String content, String category, String tags) {
+    /** 树形列表：返回用户所有文档（含文件夹），前端构建树 */
+    public List<SnapDocument> listTree(String userId) {
+        QueryWrapper<SnapDocument> qw = new QueryWrapper<>();
+        qw.eq("user_id", userId).orderByAsc("doc_type", "sort_order", "title");
+        return documentMapper.selectList(qw);
+    }
+
+    /** 创建文件夹 */
+    public SnapDocument createFolder(String userId, String title, String parentId) {
+        SnapDocument doc = new SnapDocument();
+        doc.setId(UUID.randomUUID().toString());
+        doc.setUserId(userId);
+        doc.setTitle(title);
+        doc.setContent(""); // 设置为空字符串，满足非空约束
+        doc.setCategory(title); // 分类名称就是文件夹名称
+        doc.setDocType("folder");
+        doc.setParentId(parentId);
+        doc.setStatus("published");
+        doc.setVisibility("private");
+        doc.setCreatedAt(LocalDateTime.now());
+        doc.setUpdatedAt(LocalDateTime.now());
+        documentMapper.insert(doc);
+        return doc;
+    }
+
+    public SnapDocument createAndPublish(String userId, String title, String content, String category, String tags, String parentId, String visibility) {
         SnapDocument doc = new SnapDocument();
         doc.setId(UUID.randomUUID().toString());
         doc.setUserId(userId);
@@ -69,6 +94,8 @@ public class DocumentService {
         doc.setContent(content);
         doc.setCategory(category);
         doc.setTags(tags);
+        doc.setParentId(parentId);
+        doc.setVisibility(visibility != null ? visibility : "private");
         doc.setStatus("draft");
         doc.setSourceType("md");
         doc.setSortOrder(0);
@@ -81,15 +108,20 @@ public class DocumentService {
 
     /** @deprecated use createAndPublish */
     public SnapDocument create(String userId, String title, String content, String category, String tags) {
-        return createAndPublish(userId, title, content, category, tags);
+        return createAndPublish(userId, title, content, category, tags, null, null);
     }
 
-    public SnapDocument updateAndPublish(String id, String userId, String title, String content, String category, String tags) {
+    public SnapDocument create(String userId, String title, String content, String category, String tags, String parentId) {
+        return createAndPublish(userId, title, content, category, tags, parentId, null);
+    }
+
+    public SnapDocument updateAndPublish(String id, String userId, String title, String content, String category, String tags, String visibility) {
         SnapDocument doc = getById(id, userId);
         if (title != null) doc.setTitle(title);
         if (content != null) doc.setContent(content);
         if (category != null) doc.setCategory(category);
         if (tags != null) doc.setTags(tags);
+        if (visibility != null) doc.setVisibility(visibility);
         doc.setUpdatedAt(LocalDateTime.now());
         documentMapper.updateById(doc);
         // Auto-publish after save
@@ -98,11 +130,28 @@ public class DocumentService {
 
     public void delete(String id, String userId) {
         SnapDocument doc = getById(id, userId);
-        // If published, unpublish first
+        // Recursively delete children if folder
+        if ("folder".equals(doc.getDocType())) {
+            QueryWrapper<SnapDocument> cq = new QueryWrapper<>();
+            cq.eq("parent_id", id);
+            documentMapper.selectList(cq).forEach(c -> delete(c.getId(), userId));
+        }
         if ("published".equals(doc.getStatus()) && doc.getKnowledgeFileId() != null) {
             unpublish(id, userId);
         }
         documentMapper.deleteById(id);
+    }
+
+    public void move(String id, String newParentId, String userId) {
+        SnapDocument doc = getById(id, userId);
+        // 防止将文件夹移动到自己或自己的子文件夹下
+        if (newParentId != null && "folder".equals(doc.getDocType())) {
+            if (id.equals(newParentId)) return;
+            SnapDocument parent = getById(newParentId, userId);
+            if (!"folder".equals(parent.getDocType())) return; // 只能移到文件夹下
+        }
+        doc.setParentId(newParentId);
+        documentMapper.updateById(doc);
     }
 
     // ==================== 批量导入 ====================
@@ -154,7 +203,8 @@ public class DocumentService {
 
             // Vectorize
             int chunkCount = knowledgeVectorService.vectorize(
-                    filePath.toString(), fileName, fileId, userId);
+                    filePath.toString(), fileName, fileId, userId,
+                    doc.getStatus(), doc.getVisibility());
 
             // Save knowledge file record
             KnowledgeFile kf = new KnowledgeFile();

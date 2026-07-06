@@ -32,6 +32,7 @@
           <el-button size="small" link type="warning" @click.stop="openRoles(row)">角色</el-button>
           <el-button size="small" link @click.stop="openSettings(row)">AI偏好</el-button>
           <el-button size="small" link type="danger" @click.stop="openResetPwd(row)">重置密码</el-button>
+          <el-button size="small" link type="danger" @click.stop="doDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -162,6 +163,14 @@ async function doResetPwd() {
     ElMessage.success("密码已重置为 " + resetPwdVal.value);
     resetVisible.value = false;
   } catch { ElMessage.error("重置失败"); }
+}
+async function doDelete(row: any) {
+  try { await ElMessageBox.confirm(`确定删除用户"${row.phone || row.id}"吗？`, "提示", { type: "warning" }); } catch { return; }
+  try {
+    await userApi.delete(row.id);
+    ElMessage.success("已删除");
+    loadData();
+  } catch { ElMessage.error("删除失败"); }
 }
 
 // === AI 偏好 ===

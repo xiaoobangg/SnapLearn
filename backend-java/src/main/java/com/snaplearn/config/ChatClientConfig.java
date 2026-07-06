@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.snaplearn.service.agent.CardGroupAgentTools;
+import com.snaplearn.service.agent.DocumentMasterTools;
 import com.snaplearn.service.agent.MemoryChatTools;
 import com.snaplearn.util.PromptLoader;
 import org.springframework.ai.chat.client.ChatClient;
@@ -129,6 +130,40 @@ public class ChatClientConfig {
         MessageChatMemoryAdvisor chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory).build();
         return ChatClient.builder(chatModel)
                 .defaultAdvisors(chatMemoryAdvisor)
+                .build();
+    }
+
+    // ==================== 博客 AI 对话（基于内存的临时会话） ====================
+
+    /**
+     * 博客 AI 对话的会话记忆（纯内存，不持久化）。
+     * <p>
+     * 与 {@link #chatMemory} 不同，此记忆管理器不依赖 JDBC 仓库，
+     * 会话数据仅存于 JVM 内存中，服务重启后自动清除。
+     * 适用于无需登录、临时会话的公开场景（如博客 AI 助手）。
+     *
+     * @return 基于 ConcurrentHashMap 的内存记忆管理器
+     */
+    @Bean
+    public ChatMemory blogChatMemory() {
+        return MessageWindowChatMemory.builder().maxMessages(20).build();
+    }
+
+    /**
+     * 博客 AI 对话 ChatClient（基于内存记忆）。
+     * <p>
+     * 挂载 {@link MessageChatMemoryAdvisor}，通过 {@code chat_memory_conversation_id}
+     * 参数区分不同浏览者的临时会话。会话数据仅存内存，无需登录。
+     *
+     * @param chatModel     DeepSeek ChatModel
+     * @param blogChatMemory 内存会话记忆
+     * @return 配置好内存记忆 advisor 的 ChatClient
+     */
+    @Bean
+    public ChatClient blogChatClient(DeepSeekChatModel chatModel, ChatMemory blogChatMemory) {
+        MessageChatMemoryAdvisor memoryAdvisor = MessageChatMemoryAdvisor.builder(blogChatMemory).build();
+        return ChatClient.builder(chatModel)
+                .defaultAdvisors(memoryAdvisor)
                 .build();
     }
 
@@ -320,6 +355,38 @@ public class ChatClientConfig {
                 .model(dashScopeChatModel)
                 .systemPrompt(promptLoader.load("agent-system.st"))
                 .methodTools(tools, memoryChatTools)
+                .saver(postgresSaver)
+                .build();
+    }
+
+    // ==================== 文档管理 Agent ====================
+
+    @Bean
+    public ReactAgent deepSeekDocumentMasterAgent(DeepSeekChatModel deepSeekChatModel,
+                                                   DocumentMasterTools masterTools,
+                                                   MemoryChatTools memoryChatTools,
+                                                   PromptLoader promptLoader,
+                                                   PostgresSaver postgresSaver) {
+        return ReactAgent.builder()
+                .name("document-master")
+                .model(deepSeekChatModel)
+                .systemPrompt(promptLoader.load("document-master.st"))
+                .methodTools(masterTools, memoryChatTools)
+                .saver(postgresSaver)
+                .build();
+    }
+
+    @Bean
+    public ReactAgent dashScopeDocumentMasterAgent(DashScopeChatModel dashScopeChatModel,
+                                                    DocumentMasterTools masterTools,
+                                                    MemoryChatTools memoryChatTools,
+                                                    PromptLoader promptLoader,
+                                                    PostgresSaver postgresSaver) {
+        return ReactAgent.builder()
+                .name("document-master")
+                .model(dashScopeChatModel)
+                .systemPrompt(promptLoader.load("document-master.st"))
+                .methodTools(masterTools, memoryChatTools)
                 .saver(postgresSaver)
                 .build();
     }

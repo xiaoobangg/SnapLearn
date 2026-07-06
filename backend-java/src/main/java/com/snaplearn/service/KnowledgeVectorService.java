@@ -51,15 +51,20 @@ public class KnowledgeVectorService {
     /**
      * Parse a file and vectorize its content into the vector store.
      *
+     * @param status    文档状态（published/draft），用于 RAG 过滤
+     * @param visibility 可见范围（shared/private），用于公开检索隔离
      * @return number of chunks created
      */
-    public int vectorize(String filePath, String fileName, String fileId, String userId) throws Exception {
+    public int vectorize(String filePath, String fileName, String fileId, String userId,
+                          String status, String visibility) throws Exception {
         List<Document> rawDocs = parseFile(filePath, fileName);
         rawDocs.forEach(doc -> {
             doc.getMetadata().put("file_name", fileName);
             doc.getMetadata().put("file_id", fileId);
             doc.getMetadata().put("user_id", userId);
             doc.getMetadata().put("upload_time", Instant.now().toString());
+            if (status != null) doc.getMetadata().put("status", status);
+            if (visibility != null) doc.getMetadata().put("visibility", visibility);
         });
         List<Document> chunks = splitter.transform(rawDocs);
         chunks.addAll(rawDocs);

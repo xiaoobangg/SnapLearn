@@ -233,6 +233,12 @@ public class AdminController {
 
     // ===== 卡片组管理 =====
 
+    @DeleteMapping("/users/{id}")
+    public Map<String, Object> deleteUser(@PathVariable String id) {
+        adminService.deleteUser(id);
+        return Map.of("ok", true);
+    }
+
     @GetMapping("/groups")
     public Map<String, Object> listGroups(
             @RequestParam(defaultValue = "1") int page,

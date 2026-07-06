@@ -9,10 +9,28 @@ const routes: RouteRecordRaw[] = [
     meta: { noAuth: true },
   },
   {
+    path: "/register",
+    name: "Register",
+    component: () => import("@/pages/login/RegisterPage.vue"),
+    meta: { noAuth: true },
+  },
+  {
     path: "/",
     component: () => import("@/layouts/AdminLayout.vue"),
-    redirect: "/dashboard",
+    redirect: "/documents",
     children: [
+      {
+        path: "blog",
+        name: "Blog",
+        component: () => import("@/pages/blog/BlogListPage.vue"),
+        meta: { title: "博客" },
+      },
+      {
+        path: "blog/:id",
+        name: "BlogDetail",
+        component: () => import("@/pages/blog/BlogDetailPage.vue"),
+        meta: { title: "文章详情" },
+      },
       {
         path: "dashboard",
         name: "Dashboard",
@@ -143,7 +161,7 @@ router.beforeEach((to, _from, next) => {
         if (adminInfo) {
           const admin = JSON.parse(adminInfo);
           if (admin.role !== "admin") {
-            next("/dashboard");
+            next("/documents");
             return;
           }
         }

@@ -1,59 +1,169 @@
 <template>
   <div class="doc-layout">
-    <!-- ====== 左侧：文档树 ====== -->
+    <!-- ====== 左侧：文档树 (语雀风格) ====== -->
     <div class="left-panel">
       <div class="panel-head">
-        <h4>文档列表</h4>
-        <div class="head-actions">
-          <el-button size="small" text @click="openCreate"><el-icon><Plus /></el-icon></el-button>
-          <el-button size="small" text @click="openImport"><el-icon><Upload /></el-icon></el-button>
+        <h4>文档库</h4>
+        <div class="panel-actions">
+          <el-button size="small" text title="导入 MD 文件" @click.stop="importVisible = true"><el-icon><Upload /></el-icon></el-button>
+          <el-button size="small" text title="新建" @click.stop="showRootCreateMenu"><el-icon><Plus /></el-icon></el-button>
         </div>
       </div>
-      <div class="tree-wrap">
-        <div v-for="group in docTree" :key="group.category" class="tree-group">
-          <div class="tree-group-title" @click="toggleGroup(group.category)">
-            <el-icon><component :is="group.expanded ? 'FolderOpened' : 'Folder'" /></el-icon>
-            <span>{{ group.category || '未分类' }}</span>
-            <span class="group-count">{{ group.docs.length }}</span>
-          </div>
-          <div v-show="group.expanded" class="tree-items">
-            <div
-              v-for="doc in group.docs" :key="doc.id"
-              :class="['tree-item', { active: currentDoc?.id === doc.id }]"
-              @click="selectDoc(doc)">
-              <span class="item-title">{{ doc.title }}</span>
-              <span class="item-status">
-                <el-tag v-if="doc.status==='published'" size="small" type="success" effect="dark">已发布</el-tag>
-                <el-tag v-else size="small" type="info">草稿</el-tag>
+      <div class="search-box">
+        <el-input v-model="searchText" size="small" placeholder="搜索文档..." clearable />
+      </div>
+      <div class="tree-wrap" @contextmenu.prevent="onTreeContextMenu">
+        <!-- 行内创建行：根级别 -->
+        <div v-if="creating && !creating.parentId && !searchText" class="tree-node creating-row"
+          :style="{ paddingLeft: '12px' }">
+          <span class="node-arrow" />
+          <span class="node-icon">
+            <el-icon v-if="creating.type === 'folder'" :size="15"><Folder /></el-icon>
+            <el-icon v-else :size="15"><Document /></el-icon>
+          </span>
+          <el-input v-model="creatingTitle" size="small" class="node-edit-input"
+            :placeholder="creating.type === 'folder' ? '文件夹名称' : '文档名称'"
+            @keyup.enter="confirmCreate" @keyup.escape="cancelCreate"
+            @blur="onCreateBlur" ref="creatingInputRef" />
+        </div>
+
+        <template v-for="node in filteredTree" :key="node.id">
+          <div
+            :class="['tree-node', {
+              active: currentDoc?.id === node.id,
+              'is-folder': node.docType === 'folder',
+              'just-created': node.id === justCreatedId,
+              'drag-over': dragOverId === node.id && node.docType === 'folder',
+            }]"
+            :style="{ paddingLeft: (node.level || 0) * 18 + 12 + 'px' }"
+            :draggable="editingNode !== node.id"
+            @click="onNodeClick(node)"
+            @contextmenu.stop.prevent="showCtxMenu($event, node)"
+            @dragstart="onDragStart($event, node)"
+            @dragover.prevent="onDragOver($event, node)"
+            @dragleave="onDragLeave(node)"
+            @drop.prevent="onDrop($event, node)"
+          >
+            <!-- 展开/折叠箭头 -->
+            <span class="node-arrow" v-if="node.docType === 'folder'" @click.stop="toggleGroup(node)">
+              <el-icon :size="12"><ArrowDown v-if="node.expanded" /><ArrowRight v-else /></el-icon>
+            </span>
+            <span class="node-arrow" v-else />
+            <!-- 图标 -->
+            <span class="node-icon">
+              <el-icon v-if="node.docType === 'folder'" :size="15"><Folder /></el-icon>
+              <el-icon v-else :size="15"><Document /></el-icon>
+            </span>
+            <!-- 内联编辑 / 名称 -->
+            <template v-if="editingNode === node.id">
+              <el-input v-model="editingTitle" size="small" class="node-edit-input"
+                @keyup.enter="confirmRename(node)" @blur="confirmRename(node)"
+                ref="renameInputRef" />
+            </template>
+            <template v-else>
+              <span class="node-title" :class="{ 'is-published': node.docType !== 'folder' && node.status === 'published', 'is-shared': node.visibility === 'shared' }">
+                {{ node.title }}
+                <el-icon v-if="node.docType !== 'folder' && node.status === 'published' && node.visibility === 'shared'" :size="12" class="shared-dot"><Share /></el-icon>
               </span>
-            </div>
+            </template>
+            <!-- hover 显示操作按钮 -->
+            <span class="node-tail">
+              <el-icon v-if="node.docType === 'folder'" class="tail-icon" @click.stop="showPlusMenu($event, node)">
+                <Plus />
+              </el-icon>
+              <el-icon class="tail-icon tail-more" @click.stop="showCtxMenu($event, node)">
+                <MoreFilled />
+              </el-icon>
+            </span>
           </div>
+
+          <!-- 行内创建行：文件夹子级 -->
+          <div v-if="creating && creating.parentId === node.id && node.docType === 'folder' && !searchText"
+            class="tree-node creating-row"
+            :style="{ paddingLeft: ((node.level || 0) + 1) * 18 + 12 + 'px' }">
+            <span class="node-arrow" />
+            <span class="node-icon">
+              <el-icon v-if="creating.type === 'folder'" :size="15"><Folder /></el-icon>
+              <el-icon v-else :size="15"><Document /></el-icon>
+            </span>
+            <el-input v-model="creatingTitle" size="small" class="node-edit-input"
+              :placeholder="creating.type === 'folder' ? '文件夹名称' : '文档名称'"
+              @keyup.enter="confirmCreate" @keyup.escape="cancelCreate"
+              @blur="onCreateBlur" ref="creatingInputRef" />
+          </div>
+
+          <!-- 空文件夹占位 -->
+          <div v-if="node.docType === 'folder' && node.expanded && !hasChildren(node.id) && !(creating && creating.parentId === node.id)"
+            class="tree-node empty-folder-hint"
+            :style="{ paddingLeft: ((node.level || 0) + 1) * 18 + 12 + 'px' }">
+            <span class="node-arrow" />
+            <span class="node-icon" />
+            <span class="node-title hint-text">暂无文档</span>
+          </div>
+        </template>
+
+        <div v-if="filteredTree.length === 0 && !creating" class="empty-tree">
+          {{ searchText ? '无匹配文档' : '点击上方 + 新建文档' }}
         </div>
       </div>
     </div>
 
+    <!-- ====== 右键菜单 ====== -->
+    <Teleport to="body">
+      <div v-if="ctxVisible" class="yuque-ctx-menu" :style="{ left: ctxX + 'px', top: ctxY + 'px' }" @click.stop>
+        <div class="ctx-item" @click="ctxAction('newDoc')"><el-icon :size="14"><Document /></el-icon>新建文档<span class="ctx-shortcut">Ctrl+N</span></div>
+        <div class="ctx-item" v-if="ctxNode?.docType === 'folder'" @click="ctxAction('newFolder')"><el-icon :size="14"><FolderAdd /></el-icon>新建子文件夹<span class="ctx-shortcut">Ctrl+Shift+N</span></div>
+        <div class="ctx-item" v-else @click="ctxAction('newSiblingFolder')"><el-icon :size="14"><FolderAdd /></el-icon>新建文件夹<span class="ctx-shortcut">Ctrl+Shift+N</span></div>
+        <div class="ctx-divider" />
+        <div class="ctx-item" @click="ctxAction('rename')"><el-icon :size="14"><Edit /></el-icon>重命名<span class="ctx-shortcut">F2</span></div>
+        <div class="ctx-divider" />
+        <div class="ctx-item danger" @click="ctxAction('delete')"><el-icon :size="14"><Delete /></el-icon>删除<span class="ctx-shortcut">Del</span></div>
+      </div>
+    </Teleport>
+
+    <!-- ====== 新建菜单 (文件夹 + 按钮弹出) ====== -->
+    <Teleport to="body">
+      <div v-if="plusVisible" class="yuque-ctx-menu" :style="{ left: plusX + 'px', top: plusY + 'px' }" @click.stop>
+        <div class="ctx-item" @click="plusAction('newDoc')"><el-icon :size="14"><Document /></el-icon>新建文档</div>
+        <div class="ctx-item" @click="plusAction('newFolder')"><el-icon :size="14"><FolderAdd /></el-icon>新建子文件夹</div>
+      </div>
+    </Teleport>
+
+    <!-- ====== 根级别新建菜单 ====== -->
+    <Teleport to="body">
+      <div v-if="rootMenuVisible" class="yuque-ctx-menu" :style="{ left: rootMenuX + 'px', top: rootMenuY + 'px' }" @click.stop>
+        <div class="ctx-item" @click="rootMenuAction('newDoc')"><el-icon :size="14"><Document /></el-icon>新建文档</div>
+        <div class="ctx-item" @click="rootMenuAction('newFolder')"><el-icon :size="14"><FolderAdd /></el-icon>新建文件夹</div>
+      </div>
+    </Teleport>
+
     <!-- ====== 中间：文档编辑器 ====== -->
     <div class="center-panel">
-      <template v-if="currentDoc">
+      <template v-if="currentDoc && currentDoc.docType !== 'folder'">
         <div class="editor-toolbar">
-          <el-input v-model="currentDoc.title" size="small" placeholder="标题" style="width:240px" />
-          <el-input v-model="currentDoc.category" size="small" placeholder="分类" style="width:120px" clearable />
-          <el-input v-model="currentDoc.tags" size="small" placeholder="标签(逗号分隔)" style="width:160px" clearable />
+          <el-input v-model="currentDoc.tags" size="small" placeholder="标签(逗号分隔)" style="width:200px" clearable />
           <div class="toolbar-spacer" />
-          <el-tag v-if="currentDoc.status==='published'" size="small" type="success" effect="plain">已发布</el-tag>
-          <el-tag v-else size="small" type="info" effect="plain">草稿</el-tag>
+          <span v-if="autoSaveStatus" class="auto-save-status" :class="{ saving: autoSaveStatus === 'saving' }">
+            {{ autoSaveStatus === 'saving' ? '保存中...' : '已自动保存' }}
+          </span>
+          <el-button size="small" :type="(currentDoc.visibility || 'private') === 'shared' ? 'success' : 'default'" plain @click="toggleVisibility">
+            <el-icon :size="14"><Share v-if="(currentDoc.visibility || 'private') === 'shared'" /><Lock v-else /></el-icon>
+            {{ (currentDoc.visibility || 'private') === 'shared' ? '已共享' : '私有' }}
+          </el-button>
           <el-button size="small" type="primary" @click="doSave" :loading="saving">保存并发布</el-button>
-          <el-button size="small" type="danger" text @click="doDelete">删除</el-button>
         </div>
         <div class="editor-wrap">
-          <div class="editor-pane">
-            <div class="pane-label">编辑</div>
-            <el-input v-model="currentDoc.content" type="textarea" :rows="0" class="editor-area" placeholder="在此编写 Markdown..." />
-          </div>
-          <div class="preview-pane">
-            <div class="pane-label">预览</div>
-            <div class="preview-content" v-html="renderedHtml" />
-          </div>
+          <MdEditor
+            v-model="currentDoc.content"
+            language="zh-CN"
+            preview-theme="github"
+            :preview="false"
+            :no-highlight="true"
+            :toolbars="mdToolbars"
+            :footers="[]"
+            :onUploadImg="handleUploadImg"
+            class="md-editor"
+          />
         </div>
       </template>
       <div v-else class="empty-center">
@@ -62,18 +172,38 @@
     </div>
 
     <!-- ====== 右侧：AI 助手 ====== -->
-    <div class="right-panel">
+    <div class="right-panel" :class="{ collapsed: !showAiPanel }">
       <div class="panel-head">
         <h4>AI 助手</h4>
+        <el-button size="small" text class="panel-toggle" @click="showAiPanel = !showAiPanel">
+          <el-icon :size="16"><DArrowRight v-if="showAiPanel" /><DArrowLeft v-else /></el-icon>
+        </el-button>
         <div class="ai-toolbar">
-          <el-select v-model="currentConvId" size="small" placeholder="会话" style="width:140px" @change="switchConv" clearable>
-            <el-option v-for="c in aiConvs" :key="c.chat_id" :label="c.title" :value="c.chat_id" />
-          </el-select>
-          <el-button size="small" text @click="newAiConv"><el-icon><Plus /></el-icon></el-button>
-          <el-button v-if="currentConvId" size="small" text type="danger" @click="deleteAiConv"><el-icon><Delete /></el-icon></el-button>
-          <el-button size="small" :type="aiModel==='deepseek'?'primary':'default'" plain @click="toggleAiModel">
-            {{ aiModel === 'deepseek' ? 'DS' : 'QW' }}
-          </el-button>
+          <el-dropdown trigger="click" @command="onConvCommand">
+            <el-button size="small" style="width:150px;text-align:left;overflow:hidden;text-overflow:ellipsis;">
+              {{ currentConvTitle || '选择会话' }}
+              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item v-if="aiConvs.length === 0" disabled>暂无会话</el-dropdown-item>
+                <el-dropdown-item v-for="c in aiConvs" :key="c.chat_id" :command="{ type: 'select', id: c.chat_id }"
+                  :class="{ 'is-active': currentConvId === c.chat_id }">
+                  <span class="conv-title">{{ c.title }}</span>
+                  <button class="conv-del-btn" @click.stop="delConv(c.chat_id)" title="删除会话">
+                    <el-icon :size="14"><Delete /></el-icon>
+                  </button>
+                </el-dropdown-item>
+                <el-dropdown-item divided command="{ type: 'new' }">
+                  <el-icon :size="14"><Plus /></el-icon> 新建会话
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          <button class="model-toggle-btn" @click="toggleAiModel" :class="{ active: aiModel === 'deepseek' }">
+            <span class="model-icon ds-icon">DS</span>
+            <span class="model-icon qw-icon">QW</span>
+          </button>
         </div>
       </div>
       <div class="ai-messages" ref="aiMsgs">
@@ -104,55 +234,355 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, nextTick, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Plus, Upload, UploadFilled, Delete } from "@element-plus/icons-vue";
+import { Plus, Upload, UploadFilled, Delete, Edit, Document, Folder, FolderAdd, MoreFilled, ArrowDown, ArrowRight, DArrowRight, DArrowLeft, Share, Lock } from "@element-plus/icons-vue";
 import { documentApi } from "@/api";
+import { MdEditor } from "md-editor-v3";
+import "md-editor-v3/lib/style.css";
 
 // ===== 文档树 =====
-interface DocItem { id: string; title: string; category: string; status: string; }
+interface DocItem { id: string; title: string; category: string; status: string; visibility?: string; parentId?: string; docType?: string; expanded?: boolean; level?: number; }
+interface CreatingState { parentId: string | null; type: 'document' | 'folder'; }
 const docs = ref<DocItem[]>([]);
-const docTree = computed(() => {
-  const map = new Map<string, { category: string; expanded: boolean; docs: DocItem[] }>();
-  for (const d of docs.value) {
-    const cat = d.category || "";
-    if (!map.has(cat)) map.set(cat, { category: cat, expanded: true, docs: [] });
-    map.get(cat)!.docs.push(d);
-  }
-  return Array.from(map.values());
-});
-const expandedGroups = reactive<Set<string>>(new Set());
 
-function toggleGroup(cat: string) {
-  const g = docTree.value.find(x => x.category === cat);
-  if (g) g.expanded = !g.expanded;
+// ===== 行内创建状态 =====
+const creating = ref<CreatingState | null>(null);
+const creatingTitle = ref('');
+const creatingInputRef = ref<any>(null);
+const justCreatedId = ref('');
+
+// 自动聚焦创建输入框
+watch(() => creating.value, async (val) => {
+  if (val) {
+    creatingTitle.value = '';
+    await nextTick();
+    creatingInputRef.value?.focus();
+  }
+});
+
+const searchText = ref("");
+const docTree = computed(() => {
+  const map = new Map<string, DocItem[]>();
+  for (const d of docs.value) {
+    const pid = d.parentId || "root";
+    if (!map.has(pid)) map.set(pid, []);
+    map.get(pid)!.push({ ...d, expanded: true });
+  }
+  const result: DocItem[] = [];
+  function walk(pid: string, level: number) {
+    const children = map.get(pid) || [];
+    for (const c of children) {
+      c.level = level;
+      result.push(c);
+      if (c.expanded && c.docType === 'folder') walk(c.id, level + 1);
+    }
+  }
+  walk("root", 0);
+  return result;
+});
+
+const filteredTree = computed(() => {
+  if (!searchText.value.trim()) return docTree.value;
+  const kw = searchText.value.toLowerCase();
+  return docTree.value.filter(n => n.title.toLowerCase().includes(kw) || (n.docType === 'folder' && hasMatchingChild(n.id, kw)));
+});
+
+function hasMatchingChild(pid: string, kw: string): boolean {
+  return docs.value.some(d => d.parentId === pid && (d.title.toLowerCase().includes(kw) || (d.docType === 'folder' && hasMatchingChild(d.id, kw))));
+}
+
+function toggleGroup(node: DocItem) { node.expanded = !node.expanded; }
+function onNodeClick(node: DocItem) {
+  if (node.docType === 'folder') {
+    toggleGroup(node);
+  } else {
+    selectDoc(node);
+  }
+}
+
+// ===== 右键菜单 =====
+const ctxVisible = ref(false);
+const ctxX = ref(0);
+const ctxY = ref(0);
+const ctxNode = ref<DocItem | null>(null);
+
+function showCtxMenu(e: MouseEvent, node: DocItem) {
+  ctxNode.value = node;
+  const menuW = 170;
+  ctxX.value = Math.min(e.clientX, window.innerWidth - menuW);
+  ctxY.value = Math.min(e.clientY, window.innerHeight - 200);
+  ctxVisible.value = true;
+  plusVisible.value = false;
+}
+
+function closeCtxMenu() { ctxVisible.value = false; plusVisible.value = false; rootMenuVisible.value = false; }
+document.addEventListener('click', closeCtxMenu);
+
+// 树空白区域右键 → 弹出根级创建菜单
+function onTreeContextMenu(e: MouseEvent) {
+  const target = e.target as HTMLElement;
+  if (target.closest('.tree-node')) return; // 节点右键由 showCtxMenu 处理
+  rootMenuX.value = Math.min(e.clientX, window.innerWidth - 170);
+  rootMenuY.value = Math.min(e.clientY, window.innerHeight - 100);
+  rootMenuVisible.value = true;
+  ctxVisible.value = false;
+  plusVisible.value = false;
+}
+
+function ctxAction(action: string) {
+  const node = ctxNode.value!;
+  ctxVisible.value = false;
+  if (action === 'newDoc') startCreate(node.docType === 'folder' ? node.id : (node.parentId || null), 'document');
+  else if (action === 'newFolder') startCreate(node.id, 'folder');
+  else if (action === 'newSiblingFolder') startCreate(node.parentId || null, 'folder');
+  else if (action === 'rename') startRename(node);
+  else if (action === 'delete') deleteNode(node);
+}
+
+// ===== 文件夹 + 按钮弹出菜单 =====
+const plusVisible = ref(false);
+const plusX = ref(0);
+const plusY = ref(0);
+const plusNode = ref<DocItem | null>(null);
+
+function showPlusMenu(e: MouseEvent, node: DocItem) {
+  plusNode.value = node;
+  const menuW = 160;
+  plusX.value = Math.min(e.clientX, window.innerWidth - menuW);
+  plusY.value = Math.min(e.clientY, window.innerHeight - 150);
+  plusVisible.value = true;
+  ctxVisible.value = false;
+}
+
+function plusAction(action: string) {
+  const node = plusNode.value!;
+  plusVisible.value = false;
+  if (action === 'newDoc') startCreate(node.id, 'document');
+  else if (action === 'newFolder') startCreate(node.id, 'folder');
+}
+
+// ===== 根级别新建菜单 =====
+const rootMenuVisible = ref(false);
+const rootMenuX = ref(0);
+const rootMenuY = ref(0);
+
+function showRootCreateMenu(e: MouseEvent) {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  rootMenuX.value = rect.left;
+  rootMenuY.value = rect.bottom + 4;
+  rootMenuVisible.value = true;
+  ctxVisible.value = false;
+  plusVisible.value = false;
+}
+
+function rootMenuAction(action: string) {
+  rootMenuVisible.value = false;
+  if (action === 'newDoc') startCreate(null, 'document');
+  else if (action === 'newFolder') startCreate(null, 'folder');
+}
+
+// ===== 内联重命名 =====
+const editingNode = ref("");
+const editingTitle = ref("");
+const renameInputRef = ref();
+function startRename(node: DocItem) { editingNode.value = node.id; editingTitle.value = node.title; }
+async function confirmRename(node: DocItem) {
+  if (!editingTitle.value.trim()) { editingNode.value = ""; return; }
+  try {
+    await documentApi.update(node.id, { title: editingTitle.value });
+    node.title = editingTitle.value;
+    if (currentDoc.value?.id === node.id) currentDoc.value.title = editingTitle.value;
+  } catch { /* */ }
+  editingNode.value = "";
+}
+
+// ===== 删除 =====
+async function deleteNode(node: DocItem) {
+  try { await ElMessageBox.confirm(`确定删除"${node.title}"？`, "提示", { type: "warning" }); } catch { return; }
+  try {
+    await documentApi.delete(node.id);
+    if (currentDoc.value?.id === node.id) currentDoc.value = null;
+    loadDocs();
+    ElMessage.success("已删除");
+  } catch { ElMessage.error("删除失败"); }
+}
+
+// ===== 行内创建 =====
+function startCreate(parentId: string | null, type: 'document' | 'folder') {
+  // 自动展开父文件夹
+  if (parentId) {
+    const parent = docs.value.find(d => d.id === parentId);
+    if (parent) parent.expanded = true;
+  }
+  creating.value = { parentId, type };
+}
+
+async function confirmCreate() {
+  const title = creatingTitle.value.trim();
+  if (!title || !creating.value) { cancelCreate(); return; }
+
+  try {
+    if (creating.value.type === 'folder') {
+      await documentApi.createFolder({ title, parentId: creating.value.parentId });
+      ElMessage.success('文件夹已创建');
+    } else {
+      const res = await documentApi.create({ title, content: '', parentId: creating.value.parentId, visibility: 'private' });
+      const newId = res.data?.id;
+      await loadDocs();
+      if (newId) {
+        justCreatedId.value = newId;
+        setTimeout(() => { justCreatedId.value = ''; }, 2000);
+        const newNode = docs.value.find(d => d.id === newId);
+        if (newNode) selectDoc(newNode);
+      }
+      ElMessage.success('文档已创建，开始编辑');
+    }
+    if (creating.value?.type === 'folder') await loadDocs();
+  } catch (e: any) { ElMessage.error(e?.response?.data?.detail || '创建失败'); }
+
+  creating.value = null;
+}
+
+function cancelCreate() {
+  creating.value = null;
+}
+
+function onCreateBlur() {
+  // 延迟以允许 Enter 键先触发 confirmCreate
+  setTimeout(() => {
+    if (creating.value && !creatingTitle.value.trim()) {
+      cancelCreate();
+    }
+  }, 150);
+}
+
+function hasChildren(parentId: string): boolean {
+  return docs.value.some(d => d.parentId === parentId);
+}
+
+// ===== Markdown 编辑器配置 =====
+const mdToolbars: any[] = [
+  'bold', 'italic', 'strikethrough', 'title', '-',
+  'unorderedList', 'orderedList', 'task', '-',
+  'code', 'codeBlock', 'link', 'image', 'table', '-',
+  'preview', 'catalog', 'fullscreen',
+];
+
+// ===== 拖拽移动 =====
+const dragNode = ref<DocItem | null>(null);
+const dragOverId = ref('');
+
+function onDragStart(e: DragEvent, node: DocItem) {
+  dragNode.value = node;
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+  }
+}
+
+function onDragOver(_e: DragEvent, node: DocItem) {
+  if (!dragNode.value || dragNode.value.id === node.id) return;
+  if (node.docType === 'folder') {
+    dragOverId.value = node.id;
+  }
+}
+
+function onDragLeave(node: DocItem) {
+  if (dragOverId.value === node.id) {
+    dragOverId.value = '';
+  }
+}
+
+async function onDrop(_e: DragEvent, target: DocItem) {
+  dragOverId.value = '';
+  const src = dragNode.value;
+  dragNode.value = null;
+  if (!src || src.id === target.id) return;
+  // 只能移到文件夹下
+  if (target.docType !== 'folder') return;
+
+  try {
+    await documentApi.move(src.id, { parentId: target.id });
+    ElMessage.success(`已移动到「${target.title}」`);
+    loadDocs();
+  } catch { ElMessage.error("移动失败"); }
 }
 
 // ===== 当前文档 =====
 const currentDoc = ref<any>(null);
 const saving = ref(false);
+const savedContent = ref('');            // 上次保存时的内容，用于脏检测
+const autoSaveStatus = ref('');         // '' | 'saving' | 'saved'
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+// ===== 自动保存 (3 秒无操作后触发) =====
+watch(() => currentDoc.value?.content, () => {
+  if (!currentDoc.value?.id) return;                         // 新文档不自动保存
+  if (currentDoc.value.content === savedContent.value) return; // 内容未变化
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveStatus.value = '';
+  autoSaveTimer = setTimeout(async () => {
+    autoSaveStatus.value = 'saving';
+    try {
+      await doSaveSilent();
+      savedContent.value = currentDoc.value.content;
+      autoSaveStatus.value = 'saved';
+      setTimeout(() => { if (autoSaveStatus.value === 'saved') autoSaveStatus.value = ''; }, 2000);
+    } catch {
+      autoSaveStatus.value = '';
+    }
+  }, 3000);
+});
+
+async function doSaveSilent() {
+  if (!currentDoc.value.id) return;
+  if (!currentDoc.value.visibility) currentDoc.value.visibility = 'private';
+  await documentApi.update(currentDoc.value.id, currentDoc.value);
+  loadDocs();
+}
+
+function markSaved() {
+  savedContent.value = currentDoc.value?.content || '';
+}
+
+// 标准化 API 返回的 snake_case 字段为 camelCase
+function normalizeDoc(d: any): DocItem {
+  return {
+    ...d,
+    parentId: d.parent_id ?? d.parentId ?? null,
+    docType: d.doc_type ?? d.docType ?? 'document',
+    sortOrder: d.sort_order ?? d.sortOrder ?? 0,
+    sourceType: d.source_type ?? d.sourceType,
+    sourceName: d.source_name ?? d.sourceName,
+    knowledgeFileId: d.knowledge_file_id ?? d.knowledgeFileId,
+    createdAt: d.created_at ?? d.createdAt,
+    updatedAt: d.updated_at ?? d.updatedAt,
+  };
+}
 
 async function loadDocs() {
   try {
-    const res = await documentApi.list({ size: 500 });
-    docs.value = res.data?.items || [];
+    const res = await documentApi.tree();
+    docs.value = (res.data || []).map((d: any) => ({
+      ...normalizeDoc(d),
+      expanded: (d.doc_type ?? d.docType) === 'folder',
+    }));
   } catch { /* ignore */ }
 }
 
 async function selectDoc(doc: DocItem) {
   try {
     const res = await documentApi.get(doc.id);
-    currentDoc.value = res.data;
+    currentDoc.value = normalizeDoc(res.data);
+    markSaved();
   } catch { ElMessage.error("加载失败"); }
-}
-
-async function openCreate() {
-  currentDoc.value = { id: null, title: "新文档", content: "", category: "", tags: "", status: "draft" };
 }
 
 async function doSave() {
   saving.value = true;
   try {
+    // 确保 visibility 有默认值
+    if (!currentDoc.value.visibility) currentDoc.value.visibility = 'private';
     if (!currentDoc.value.id) {
       const res = await documentApi.create(currentDoc.value);
       currentDoc.value.id = res.data.id;
@@ -162,26 +592,46 @@ async function doSave() {
       currentDoc.value.status = res.data.status;
     }
     ElMessage.success("已保存并发布");
+    markSaved();
     loadDocs();
   } catch (e: any) { ElMessage.error(e?.response?.data?.detail || "保存失败"); }
   saving.value = false;
 }
 
-async function doDelete() {
-  try { await ElMessageBox.confirm("确定删除？", "提示", { type: "warning" }); } catch { return; }
-  try {
-    await documentApi.delete(currentDoc.value.id);
-    currentDoc.value = null;
-    ElMessage.success("已删除");
-    loadDocs();
-  } catch { ElMessage.error("删除失败"); }
+function toggleVisibility() {
+  if (!currentDoc.value) return;
+  currentDoc.value.visibility = (currentDoc.value.visibility || 'private') === 'shared' ? 'private' : 'shared';
+  if (currentDoc.value.id) doSave();
+}
+
+// ===== 图片上传 =====
+async function handleUploadImg(files: File[], callback: (urls: string[]) => void) {
+  const results: string[] = [];
+  for (const file of files) {
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const baseUrl = import.meta.env.VITE_APP_BASE_API || '';
+      const token = localStorage.getItem('admin_token') || '';
+      const resp = await fetch(`${baseUrl}/admin/documents/upload-image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = await resp.json();
+      if (data.url) results.push(data.url);
+      else results.push('upload failed');
+    } catch {
+      results.push('upload failed');
+    }
+  }
+  callback(results);
 }
 
 // ===== 批量导入 =====
 const importVisible = ref(false);
 const importFiles = ref<any[]>([]);
 const importing = ref(false);
-function openImport() { importFiles.value = []; importVisible.value = true; }
 function onFileChange(_f: any, list: any[]) { importFiles.value = list.map(x => x.raw).filter(Boolean); }
 async function doImport() {
   if (!importFiles.value.length) return;
@@ -197,23 +647,8 @@ async function doImport() {
   importing.value = false;
 }
 
-// ===== Markdown 预览 =====
-const renderedHtml = computed(() => {
-  let md = currentDoc.value?.content || "";
-  md = md.replace(/^### (.+)$/gm, "<h4>$1</h4>");
-  md = md.replace(/^## (.+)$/gm, "<h3>$1</h3>");
-  md = md.replace(/^# (.+)$/gm, "<h2>$1</h2>");
-  md = md.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  md = md.replace(/\*(.+?)\*/g, "<em>$1</em>");
-  md = md.replace(/`([^`]+)`/g, "<code>$1</code>");
-  md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "<a href=\"$2\" target=\"_blank\">$1</a>");
-  md = md.replace(/```(\w*)\n([\s\S]*?)```/g, "<pre><code>$2</code></pre>");
-  md = md.replace(/\n\n/g, "<br><br>");
-  md = md.replace(/\n/g, "<br>");
-  return md;
-});
-
 // ===== AI =====
+const showAiPanel = ref(true);
 const aiInput = ref("");
 const aiMessages = ref<{ role: string; content: string; tool?: string }[]>([]);
 const aiLoading = ref(false);
@@ -226,80 +661,74 @@ async function loadAiConvs() {
   try {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || "";
     const token = localStorage.getItem("admin_token") || "";
-    const resp = await fetch(`${baseUrl}/api/v1/chat/conversations`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const resp = await fetch(`${baseUrl}/api/v1/chat/conversations`, { headers: { Authorization: `Bearer ${token}` } });
     aiConvs.value = await resp.json();
+    // 默认选中最新会话
+    if (aiConvs.value.length > 0 && !currentConvId.value) {
+      switchConv(aiConvs.value[0].chat_id);
+    }
   } catch { /* ignore */ }
 }
-
 async function loadAiHistory(chatId: string) {
   try {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || "";
     const token = localStorage.getItem("admin_token") || "";
-    const resp = await fetch(`${baseUrl}/api/v1/chat/messages/${chatId}?mode=chat`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const resp = await fetch(`${baseUrl}/api/v1/chat/messages/${chatId}?mode=agent`, { headers: { Authorization: `Bearer ${token}` } });
     const msgs = await resp.json();
-    aiMessages.value = msgs.map((m: any) => ({
-      role: m.role === "user" ? "user" : "assistant",
-      content: m.content,
-    }));
+    aiMessages.value = msgs.map((m: any) => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }));
   } catch { aiMessages.value = []; }
 }
+const currentConvTitle = computed(() => {
+  if (!currentConvId.value) return "";
+  const c = aiConvs.value.find((x: any) => x.chat_id === currentConvId.value);
+  return c?.title || "";
+});
 
-async function switchConv(chatId: string) {
-  if (!chatId) { newAiConv(); return; }
-  currentConvId.value = chatId;
-  loadAiHistory(chatId);
+async function onConvCommand(cmd: any) {
+  if (cmd.type === 'select') { switchConv(cmd.id); return; }
+  if (cmd.type === 'new') { newAiConv(); return; }
 }
 
-async function newAiConv() {
-  currentConvId.value = "";
-  aiMessages.value = [{ role: "assistant", content: "你好！我是文档助手。" }];
-  loadAiConvs();
+async function delConv(chatId: string) {
+  try {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || "";
+    const token = localStorage.getItem("admin_token") || "";
+    await fetch(`${baseUrl}/api/v1/chat/conversations/${chatId}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    if (currentConvId.value === chatId) newAiConv();
+    loadAiConvs();
+  } catch { /* ignore */ }
 }
 
+async function switchConv(chatId: string) { if (!chatId) { newAiConv(); return; } currentConvId.value = chatId; loadAiHistory(chatId); }
+async function newAiConv() { currentConvId.value = ""; aiMessages.value = [{ role: "assistant", content: "你好！我是文档助手。" }]; loadAiConvs(); }
 async function deleteAiConv() {
   if (!currentConvId.value) return;
   try {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || "";
     const token = localStorage.getItem("admin_token") || "";
-    await fetch(`${baseUrl}/api/v1/chat/conversations/${currentConvId.value}`, {
-      method: "DELETE", headers: { Authorization: `Bearer ${token}` },
-    });
+    await fetch(`${baseUrl}/api/v1/chat/conversations/${currentConvId.value}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
     newAiConv();
   } catch { /* ignore */ }
 }
-
-function toggleAiModel() {
-  aiModel.value = aiModel.value === "deepseek" ? "dashscope" : "deepseek";
-}
-
+function toggleAiModel() { aiModel.value = aiModel.value === "deepseek" ? "dashscope" : "deepseek"; }
 function scrollAi() { nextTick(() => { if (aiMsgs.value) aiMsgs.value.scrollTop = aiMsgs.value.scrollHeight; }); }
 
 async function sendAi() {
   const msg = aiInput.value.trim();
   if (!msg || aiLoading.value) return;
   aiInput.value = "";
-
-  // Auto-create conversation on first message
-  if (!currentConvId.value) {
-    currentConvId.value = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  }
-
+  if (!currentConvId.value) currentConvId.value = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   aiMessages.value.push({ role: "user", content: msg });
   aiMessages.value.push({ role: "assistant", content: "" });
   scrollAi();
   aiLoading.value = true;
-
   try {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || "";
     const token = localStorage.getItem("admin_token") || "";
     const resp = await fetch(`${baseUrl}/api/v1/chat/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-      body: JSON.stringify({ message: msg, chat_id: currentConvId.value, model: aiModel.value, tool_mode: "document" }),
+      body: JSON.stringify({ message: msg, chat_id: currentConvId.value, model: aiModel.value, mode: "agent", agent_type: "document" }),
     });
     const reader = resp.body?.getReader();
     const decoder = new TextDecoder();
@@ -327,230 +756,289 @@ async function sendAi() {
   aiLoading.value = false;
 }
 
-onMounted(() => {
-  loadDocs();
-  loadAiConvs();
-  aiMessages.value = [{ role: "assistant", content: "你好！我是文档助手。可以帮你搜索、创建或修改文档。" }];
-});
+onMounted(() => { loadDocs(); loadAiConvs(); aiMessages.value = [{ role: "assistant", content: "你好！我是文档助手。可以帮你搜索、创建或修改文档。" }]; });
 </script>
 
 <style lang="scss" scoped>
-
-.doc-layout { 
-  display: flex; 
+.doc-layout {
+  display: flex;
   height: 100%;
+  min-height: calc(100vh - 120px); // fallback: header(60px) + padding(48px) + buffer
   background: $bg-gradient-start;
 }
 
+// ===== 右键菜单 / + 菜单 (语雀风格) =====
+.yuque-ctx-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 160px;
+  background: #FFFFFF;
+  border: 1px solid $card-border;
+  border-radius: $radius-md;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 6px 0;
+  animation: ctxFadeIn 0.12s ease;
+
+  .ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: $text-primary;
+    cursor: pointer;
+    transition: background 0.12s;
+
+    &:hover { background: #F3F4F6; }
+    &.danger { color: $accent-red;
+      &:hover { background: rgba($accent-red, 0.06); }
+    }
+    .ctx-shortcut {
+      margin-left: auto;
+      font-size: 11px;
+      color: $text-muted;
+      letter-spacing: 0.3px;
+    }
+  }
+  .ctx-divider {
+    height: 1px;
+    background: $card-border;
+    margin: 4px 0;
+  }
+}
+@keyframes ctxFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 // ===== Left Panel =====
-.left-panel { 
-  width: 260px; 
-  min-width: 220px; 
-  background: $card-bg; 
-  border-right: 1px solid $card-border; 
-  display: flex; 
+.left-panel {
+  width: 260px;
+  min-width: 220px;
+  background: #FAFBFC;
+  border-right: 1px solid $card-border;
+  display: flex;
   flex-direction: column;
-  border-radius: $radius-lg 0 0 $radius-lg;
   overflow: hidden;
 
-  .panel-head { 
-    display: flex; 
-    align-items: center; 
-    justify-content: space-between; 
-    padding: 14px 16px; 
-    border-bottom: 1px solid $card-border;
-
-    h4 { 
-      margin: 0; 
-      font-size: 15px; 
-      font-weight: 600;
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    h4 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
       color: $text-primary;
+    }
+    .panel-actions {
+      display: flex;
+      gap: 2px;
+    }
+  }
+  .search-box {
+    padding: 0 12px 10px;
+  }
+  .tree-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  .empty-tree {
+    text-align: center;
+    color: $text-muted;
+    font-size: 13px;
+    padding: 40px 20px;
+  }
+}
+
+// ===== Tree Node (语雀风格) =====
+.tree-node {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  color: $text-primary;
+  transition: background 0.15s;
+  border-radius: 0;
+  margin: 0;
+  position: relative;
+  user-select: none;
+
+  &:hover {
+    background: #EBEDF0;
+    .node-tail { opacity: 1; }
+  }
+  &.active {
+    background: #E8EAED;
+    font-weight: 500;
+    .node-tail { opacity: 1; }
+  }
+  &.drag-over {
+    background: #DBEAFE;
+    outline: 2px dashed $primary-color;
+    outline-offset: -2px;
+  }
+
+  .node-arrow {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: $text-muted;
+  }
+  .node-icon {
+    width: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: $text-muted;
+    margin-right: 2px;
+  }
+  .node-edit-input {
+    flex: 1;
+    :deep(.el-input__wrapper) {
+      padding: 0 8px;
+      height: 26px;
+    }
+  }
+  .node-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    &.is-published { color: $accent-green; }
+    &.is-shared { color: $accent-green; }
+    .shared-dot {
+      margin-left: 4px;
+      color: $accent-green;
+      vertical-align: middle;
+    }
+  }
+  .node-tail {
+    opacity: 0;
+    transition: opacity 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    margin-left: 4px;
+
+    .tail-icon {
+      width: 24px;
+      height: 24px;
       display: flex;
       align-items: center;
-      gap: 8px;
-
-      &::before {
-        content: "";
-        width: 4px;
-        height: 16px;
-        background: linear-gradient(180deg, $primary-color, $accent-purple);
-        border-radius: 2px;
+      justify-content: center;
+      border-radius: 4px;
+      color: $text-muted;
+      font-size: 15px;
+      cursor: pointer;
+      &:hover {
+        background: rgba($text-primary, 0.06);
+        color: $text-primary;
       }
     }
+    .tail-more { font-size: 16px; }
+  }
+}
 
-    .head-actions { 
-      display: flex; 
-      gap: 4px; 
+// 行内创建行
+.creating-row {
+  background: #F0F4FF;
+  border: 1px dashed $primary-color;
+  border-radius: 4px;
+  margin: 2px 8px;
+  animation: createSlideIn 0.15s ease;
+
+  .node-edit-input {
+    flex: 1;
+    :deep(.el-input__wrapper) {
+      padding: 0 8px;
+      height: 26px;
+      background: transparent;
+      box-shadow: none;
+      border: none;
+    }
+    :deep(.el-input__inner) {
+      font-size: 13px;
+      &::placeholder { color: #A0AEC0; font-size: 12px; }
     }
   }
+}
+@keyframes createSlideIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-  .tree-wrap { 
-    flex: 1; 
-    overflow-y: auto; 
-    padding: 8px 0;
+// 新建节点短暂高亮
+.just-created {
+  animation: nodeHighlight 1.5s ease;
+}
+@keyframes nodeHighlight {
+  0% { background: #DBEAFE; }
+  100% { background: transparent; }
+}
+
+// 空文件夹占位
+.empty-folder-hint {
+  cursor: default;
+  pointer-events: none;
+  .hint-text {
+    color: $text-muted;
+    font-size: 12px;
+    font-style: italic;
   }
-
-  .tree-group { margin-bottom: 4px; }
-
-  .tree-group-title { 
-    display: flex; 
-    align-items: center; 
-    gap: 8px; 
-    padding: 8px 16px; 
-    font-size: 13px; 
-    color: $text-secondary; 
-    cursor: pointer; 
-    user-select: none;
-    border-radius: $radius-sm;
-    margin: 0 8px;
-
-    &:hover { 
-      background: $sidebar-hover;
-      color: $text-primary;
-    }
-
-    .el-icon { 
-      font-size: 15px; 
-      color: $text-muted;
-    }
-
-    .group-count { 
-      margin-left: auto; 
-      font-size: 12px; 
-      color: $text-muted; 
-      background: #F3F4F6;
-      padding: 2px 6px;
-      border-radius: 10px;
-    } 
-  }
-
-  .tree-items { padding-left: 8px; }
-
-  .tree-item { 
-    display: flex; 
-    align-items: center; 
-    padding: 8px 16px 8px 32px; 
-    font-size: 13px; 
-    cursor: pointer; 
-    border-radius: $radius-sm; 
-    margin: 2px 8px;
-    color: $text-primary;
-
-    &:hover { 
-      background: $sidebar-hover;
-    }
-
-    &.active { 
-      background: $sidebar-active; 
-      color: $primary-color;
-      font-weight: 500;
-    }
-
-    .item-title { 
-      flex: 1; 
-      overflow: hidden; 
-      text-overflow: ellipsis; 
-      white-space: nowrap; 
-    }
-
-    .item-status { margin-left: 8px; } 
-  }
+  &:hover { background: transparent; }
 }
 
 // ===== Center Panel =====
-.center-panel { 
-  flex: 1; 
-  display: flex; 
-  flex-direction: column; 
+.center-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   background: $card-bg;
-  border-left: 1px solid $card-border;
 }
-
-.editor-toolbar { 
-  display: flex; 
-  align-items: center; 
-  gap: 10px; 
-  padding: 12px 16px; 
-  background: $card-bg; 
-  border-bottom: 1px solid $card-border; 
-  flex-wrap: wrap;
-
-  .toolbar-spacer { flex: 1; } 
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: $card-bg;
+  border-bottom: 1px solid $card-border;
+  .toolbar-spacer { flex: 1; }
+  .auto-save-status {
+    font-size: 12px;
+    color: $text-muted;
+    white-space: nowrap;
+    &.saving { color: $primary-color; }
+  }
 }
-
-.editor-wrap { 
-  flex: 1; 
-  display: flex; 
+.editor-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
   overflow: hidden;
 
-  .editor-pane, .preview-pane { 
-    flex: 1; 
-    display: flex; 
-    flex-direction: column;
-  }
-
-  .editor-pane { border-right: 1px solid $card-border; }
-
-  .pane-label { 
-    padding: 8px 14px; 
-    background: #F9FAFB; 
-    font-size: 13px; 
-    color: $text-secondary;
-    font-weight: 500;
-    border-bottom: 1px solid $card-border; 
-  }
-
-  .editor-area {
+  .md-editor {
     flex: 1;
-    background: #FFFFFF;
-
-    :deep(textarea) { 
-      border: none; 
-      border-radius: 0; 
-      resize: none; 
-      font-family: 'Menlo', 'Consolas', monospace; 
-      font-size: 13px; 
-      line-height: 1.7; 
-      height: 100% !important;
-      background: #FFFFFF;
-    }
-  }
-
-  .preview-content { 
-    flex: 1; 
-    overflow-y: auto; 
-    padding: 16px; 
-    background: #FFFFFF; 
-    font-size: 14px; 
-    line-height: 1.8;
-
-    :deep(h2) { font-size: 20px; margin: 16px 0 10px; color: $text-primary; font-weight: 600; }
-    :deep(h3) { font-size: 17px; margin: 14px 0 8px; color: $text-primary; font-weight: 600; }
-    :deep(h4) { font-size: 15px; margin: 10px 0 6px; color: $text-primary; font-weight: 500; }
-    :deep(code) { background: #F3F4F6; padding: 2px 6px; border-radius: 4px; font-size: 13px; color: $accent-red; }
-    :deep(pre) { 
-      background: #1F2937; 
-      color: #E5E7EB; 
-      padding: 16px; 
-      border-radius: $radius-md; 
-      overflow-x: auto;
-      font-family: 'Menlo', 'Consolas', monospace;
-      font-size: 13px;
-
-      code { background: none; padding: 0; color: inherit; } 
-    }
-    :deep(a) { color: $primary-color; text-decoration: none;
-      &:hover { text-decoration: underline; }
-    }
-    :deep(p) { margin: 8px 0; }
+    min-height: 0;
+    height: 100%;
+    width: 100%;
+    border: none;
+    border-radius: 0;
   }
 }
-
-.empty-center { 
-  flex: 1; 
-  display: flex; 
-  align-items: center; 
+.empty-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
   justify-content: center;
   background: $bg-gradient-start;
 }
@@ -564,98 +1052,133 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: width 0.25s ease, min-width 0.25s ease;
 
-  .panel-head { 
-    padding: 14px 16px; 
+  &.collapsed {
+    width: 36px;
+    min-width: 36px;
+    .ai-toolbar, .ai-messages, .ai-input { display: none; }
+    .panel-head {
+      padding: 12px 8px;
+      h4 { display: none; }
+    }
+  }
+
+  .panel-head {
+    position: relative;
+    padding: 14px 16px;
     border-bottom: 1px solid $card-border;
+    h4 {
+      margin: 0; font-size: 15px; font-weight: 600; color: $text-primary;
+      display: flex; align-items: center; gap: 8px;
+      &::before { content: ""; width: 4px; height: 16px; background: linear-gradient(180deg, $primary-color, $accent-purple); border-radius: 2px; }
+    }
+    .panel-toggle {
+      position: absolute; right: 4px; top: 8px;
+    }
+    .ai-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .conv-title { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+    :deep(.el-dropdown-menu__item.is-active) { color: $primary-color; font-weight: 500; }
+    :deep(.el-dropdown-menu__item) { display: flex; align-items: center; gap: 8px; }
 
-    h4 { 
-      margin: 0; 
-      font-size: 15px; 
-      font-weight: 600;
-      color: $text-primary;
+    .model-toggle-btn {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 2px;
+      padding: 4px 6px;
+      border-radius: 20px;
+      background: #F3F4F6;
+      border: 1px solid #E5E7EB;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      width: 72px;
+      height: 28px;
+      overflow: hidden;
 
-      &::before {
-        content: "";
-        width: 4px;
-        height: 16px;
-        background: linear-gradient(180deg, $primary-color, $accent-purple);
-        border-radius: 2px;
+      &:hover {
+        background: #EEF2FF;
+        border-color: rgba($primary-color, 0.3);
+      }
+
+      .model-icon {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 600;
+        color: #6B7280;
+        transition: all 0.2s ease;
+        z-index: 1;
+        position: relative;
+
+        &.ds-icon { color: #10B981; }
+        &.qw-icon { color: #F59E0B; }
+      }
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 32px;
+        height: 22px;
+        background: #FFFFFF;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease;
+      }
+
+      &.active::after {
+        transform: translateX(34px);
+      }
+
+      &.active {
+        background: linear-gradient(135deg, rgba($primary-color, 0.08), rgba($accent-purple, 0.08));
+        border-color: rgba($primary-color, 0.2);
       }
     }
-    .ai-toolbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
-  }
 
-  .ai-messages { 
-    flex: 1; 
-    overflow-y: auto; 
-    padding: 12px;
-    background: #F9FAFB;
-  }
+    .conv-del-btn {
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: #9CA3AF;
+      cursor: pointer;
+      transition: all 0.15s ease;
 
-  .ai-msg { 
-    margin-bottom: 12px;
+      &:hover {
+        background: rgba($accent-red, 0.08);
+        color: $accent-red;
+      }
 
-    &.user { 
-      text-align: right;
-
-      .msg-content { 
-        background: $primary-color; 
-        color: #FFFFFF; 
-        display: inline-block; 
-        padding: 10px 14px; 
-        border-radius: $radius-lg;
-        border-bottom-right-radius: 4px;
-        max-width: 85%; 
-        text-align: left; 
-        font-size: 13px; 
-        white-space: pre-wrap;
-        box-shadow: 0 2px 6px rgba(77, 107, 254, 0.2);
-      } 
+      &:active {
+        background: rgba($accent-red, 0.15);
+      }
     }
-
+  }
+  .ai-messages { flex: 1; overflow-y: auto; padding: 12px; background: #F9FAFB; }
+  .ai-msg {
+    margin-bottom: 12px;
+    &.user {
+      text-align: right;
+      .msg-content { background: $primary-color; color: #FFF; display: inline-block; padding: 10px 14px; border-radius: $radius-lg; border-bottom-right-radius: 4px; max-width: 85%; text-align: left; font-size: 13px; white-space: pre-wrap; box-shadow: 0 2px 6px rgba(77,107,254,0.2); }
+    }
     &.assistant {
       text-align: left;
-
-      .msg-content { 
-        background: $card-bg; 
-        display: inline-block; 
-        padding: 10px 14px; 
-        border-radius: $radius-lg;
-        border-bottom-left-radius: 4px;
-        max-width: 85%; 
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04); 
-        font-size: 13px; 
-        white-space: pre-wrap;
-        color: $text-primary;
-        border: 1px solid $card-border;
-
-        &.typing { 
-          color: $text-muted; 
-        } 
-      } 
-    } 
+      .msg-content { background: $card-bg; display: inline-block; padding: 10px 14px; border-radius: $radius-lg; border-bottom-left-radius: 4px; max-width: 85%; box-shadow: 0 1px 3px rgba(0,0,0,0.04); font-size: 13px; white-space: pre-wrap; color: $text-primary; border: 1px solid $card-border;
+        &.typing { color: $text-muted; }
+      }
+    }
   }
-
-  .msg-tool { 
-    font-size: 12px; 
-    color: $accent-green; 
-    margin-top: 4px; 
-    padding: 4px 10px; 
-    background: rgba(16, 185, 129, 0.1);
-    border-radius: $radius-sm; 
-    display: inline-block;
-  }
-
-  .ai-input { 
-    display: flex; 
-    gap: 8px; 
-    padding: 12px; 
-    border-top: 1px solid $card-border;
-    background: $card-bg;
-  }
+  .msg-tool { font-size: 12px; color: $accent-green; margin-top: 4px; padding: 4px 10px; background: rgba(16,185,129,0.1); border-radius: $radius-sm; display: inline-block; }
+  .ai-input { display: flex; gap: 8px; padding: 12px; border-top: 1px solid $card-border; background: $card-bg; }
 }
 </style>

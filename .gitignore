@@ -45,3 +45,4 @@ docker-compose.override.yml
 backend-java/target/
 **/application-dev.yml
 backend-java/Query.sql
+backend-java/Prod.sql

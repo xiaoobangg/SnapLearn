@@ -206,6 +206,14 @@ public class LLMService {
         }
     }
 
+    /** 简单流式对话（无记忆/RAG/工具，直接流式返回） */
+    public Flux<String> chatSimpleStream(String message, String model) {
+        return ChatClient.builder(selectModel(model)).build().prompt()
+                .user(message)
+                .stream()
+                .content();
+    }
+
     /**
      * 流式对话（完整版，支持指定 toolMode）。
      * <p>
@@ -221,13 +229,15 @@ public class LLMService {
      */
     public Flux<String> chatStream(String message, String model, String chatId, String userId, String toolMode) {
         var prompt = selectClient(model).prompt()
-                .tools(memoryChatTools)
                 .toolContext(Map.of("userId", userId))
                 .advisors(a -> a.param("chat_memory_conversation_id", chatId))
-                .advisors(new ChatTraceLoggingAdvisor(userId, chatId, model, chatTraceService))
-                .advisors(getRetrievalAugmentationAdvisor(userId));
+                .advisors(new ChatTraceLoggingAdvisor(userId, chatId, model, chatTraceService));
         if ("document".equals(toolMode)) {
             prompt.tools(memoryChatTools, documentChatTools);
+            prompt.advisors(getRetrievalSimplyAugmentationAdvisor(userId));
+        } else {
+            prompt.tools(memoryChatTools);
+            prompt.advisors(getRetrievalAugmentationAdvisor(userId));
         }
         return prompt.user(message).stream().content();
     }
@@ -258,13 +268,14 @@ public class LLMService {
      */
     public String chatStr(String message, String model, String chatId, String userId, String toolMode) {
         var prompt = selectClient(model).prompt()
-                .tools(memoryChatTools)
                 .toolContext(Map.of("userId", userId))
                 .advisors(a -> a.param("chat_memory_conversation_id", chatId))
                 .advisors(new ChatTraceLoggingAdvisor(userId, chatId, model, chatTraceService))
                 .advisors(getRetrievalAugmentationAdvisor(userId));
         if ("document".equals(toolMode)) {
             prompt.tools(memoryChatTools, documentChatTools);
+        } else {
+            prompt.tools(memoryChatTools);
         }
         return prompt.user(message).call().content();
     }
@@ -282,6 +293,13 @@ public class LLMService {
         return RetrievalAugmentationAdvisor.builder()
                 .queryTransformers(conditionalCompression, rewriteQueryTransformer)
                 .queryExpander(multiQueryExpander)
+                .documentRetriever(loggingRetriever(buildUserRetriever(userId), userId))
+                .queryAugmenter(contextualQueryAugmenter)
+                .build();
+    }
+
+    private RetrievalAugmentationAdvisor getRetrievalSimplyAugmentationAdvisor(String userId) {
+        return RetrievalAugmentationAdvisor.builder()
                 .documentRetriever(loggingRetriever(buildUserRetriever(userId), userId))
                 .queryAugmenter(contextualQueryAugmenter)
                 .build();

@@ -42,7 +42,10 @@ public class JwtInterceptor implements HandlerInterceptor {
 
             String path = request.getRequestURI();
             if (path.startsWith("/api/v1/admin/")) {
-                if (!roles.contains("admin")) {
+                // 文档管理和博客相关接口允许普通用户访问
+                if (path.startsWith("/api/v1/admin/documents")) {
+                    // allow non-admin
+                } else if (!roles.contains("admin")) {
                     sendError(response, 403, "需要管理员权限");
                     return false;
                 }
