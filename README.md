@@ -1,6 +1,6 @@
 # SnapLearn 拍立学
 
-> 拍照学英语 — 基于 AI 的微信小程序词汇学习应用
+> 拍照学英语 — 基于 AI 的微信小程序词汇学习应用 + 文档博客系统
 
 [![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-green.svg)](https://spring.io/projects/spring-boot)
