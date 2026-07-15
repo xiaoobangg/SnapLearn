@@ -158,20 +158,23 @@ SnapLearn/
 │
 ├── admin/                   # Vue 3 后台管理 SPA
 │   └── src/pages/
-│       ├── login/           # 登录
+│       ├── login/           # 登录 / 注册
 │       ├── dashboard/       # 仪表盘
-│       ├── users/           # 用户管理（含重置密码 + 角色分配）
-│       ├── groups/          # 卡片组管理
+│       ├── blog/            # 博客列表 + 文章详情
+│       ├── documents/       # 文档管理（列表 + 编辑器 + AI 助手）
+│       ├── users/           # 用户管理（含详情 + 重置密码 + 角色分配）
+│       ├── groups/          # 卡片组管理（列表 + 详情）
 │       ├── cards/           # 卡片管理
-│       ├── word-banks/      # 词库
-│       ├── word-contents/   # 单词内容（手动 LLM 刷新）
+│       ├── wordbanks/       # 词库
+│       ├── wordcontents/    # 单词内容（手动 LLM 刷新）
 │       ├── knowledge/       # RAG 知识库（上传/管理）
 │       ├── chat/            # AI 对话入口（与小程序端方案一致）
 │       ├── chat-traces/     # AI 对话日志列表 + 详情
 │       ├── logs/            # API 访问日志
 │       ├── voices/          # 音色管理 + 声音复刻
 │       ├── api-keys/        # API Key 管理（用户自服务）
-│       └── settings/
+│       ├── feedbacks/       # 用户反馈管理
+│       └── settings/        # 系统设置
 │
 ├── observability/           # 本地可观测性栈（Docker Compose）
 │   ├── docker-compose.yml   # Prometheus + Grafana
